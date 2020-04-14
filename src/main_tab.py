@@ -10,18 +10,23 @@ import ipywidgets as widgets
 
 import open_tab
 import settings_tab
+import explore_tab
 
-main_model = None
+def init_tab(self):
 
-def get_tab(self):
+    self.main_tab_widget = widgets.Tab()
+    self.open_tab_widget = open_tab.get_tab(self)
+    self.main_tab_widget.children = [self.open_tab_widget]
+    self.main_tab_widget.set_title(0, 'Open')
 
-    main_tab = widgets.Tab()
+def all_tabs(self):
+    # adds more children, only if model exists
 
-    open_t = open_tab.get_tab(self)
-    settings_t = settings_tab.get_tab(self)
-
-    main_tab.children = [open_t, settings_t]
-    main_tab.set_title(0, 'Open')
-    main_tab.set_title(1, 'Settings')
+    if self.model is not None:
+        settings_t = settings_tab.get_tab(self)
+        explore_t = explore_tab.get_tab(self)
+        self.main_tab_widget.children = [self.open_tab_widget, settings_t, explore_t]
+        self.main_tab_widget.set_title(0, 'Open')
+        self.main_tab_widget.set_title(1, 'Settings (explore)')
+        self.main_tab_widget.set_title(2, 'Explore')
     
-    return main_tab

@@ -8,10 +8,6 @@ Defines the settings tab for selecting populations and parameters
 from __future__ import print_function
 import ipywidgets as widgets
 
-import sys
-sys.path.insert(1, '/Users/karlen/pypm/src')
-from Model import Model
-
 def get_tab(self):
 
     settings_tab = widgets.Tab()    
@@ -27,7 +23,9 @@ def get_tab(self):
 def get_populations_tab(self):
     
     items = []
-    for pop_name in self.model.populations:
+    pop_name_list = list(self.model.populations.keys())
+    pop_name_list.sort()
+    for pop_name in pop_name_list:
         pop = self.model.populations[pop_name]
         cb = widgets.Checkbox(
         value=not pop.hidden,
@@ -51,7 +49,9 @@ def get_populations_tab(self):
 def get_parameters_tab(self):
     
     items = []
-    for par_name in self.model.parameters:
+    par_name_list = list(self.model.parameters.keys())
+    par_name_list.sort()
+    for par_name in par_name_list:
         par = self.model.parameters[par_name]
         cb = widgets.Checkbox(
         value=not par.hidden,

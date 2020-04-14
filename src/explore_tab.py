@@ -1,0 +1,413 @@
+# -*- coding: utf-8 -*-
+"""
+This tab allows the user to explore the current model by adjusting parameters
+
+@author: karlen
+"""
+
+from __future__ import print_function
+import ipywidgets as widgets
+from ipywidgets import AppLayout
+
+from datetime import date
+import time
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+model_name = None
+model_description = None
+transitions_chooser = None
+region_dropdown = None
+
+def get_par_list(self):
+    pars = []
+    for par_name in self.model.parameters:
+        par = self.model.parameters[par_name]
+        if not par.hidden:
+            pars.append(par_name)
+    pars.sort()
+    return pars
+
+def get_transitions_lists(self):
+    trans_list = []
+    trans_enabled = []
+    for trans_name in self.model.transitions:
+        trans = self.model.transitions[trans_name]
+        trans_list.append(trans_name)
+        if trans.enabled:
+            trans_enabled.append(trans_name)
+    trans_list.sort()
+    return trans_list, trans_enabled
+
+def get_region_list(self):
+    region_list = ['None']
+    region_selected = 'None'
+    if self.data_description is not None:
+        region_list += list(self.data_description['regional_data'].keys())
+        if 'selected_region' in self.data_description:
+            region_selected = self.data_description['selected_region']
+    return region_list, region_selected
+
+def new_data_opened(self):
+    # update the region chooser
+    global region_dropdown
+    region_list, region_selected = get_region_list(self)
+    region_dropdown.options = region_list
+    region_dropdown.value = region_selected
+    region_dropdown.disabled = False
+
+def new_model_opened(self):
+    # update the text widgets to show the current model
+    global model_name, model_description, transitions_chooser
+    model_name.value = self.model.name
+    model_description.value = self.model.description
+    
+    # update the list of transitions
+    trans_list, trans_enabled = get_transitions_lists(self)
+    transitions_chooser.options = trans_list
+    transitions_chooser.enabled = trans_enabled
+
+def get_tab(self):
+    global model_name, model_description, transitions_chooser, region_dropdown
+
+    def delta(cumul):
+        diff = []
+        for i in range(1,len(cumul)):
+            diff.append(cumul[i] - cumul[i-1])
+        return diff
+    
+    def plot_total(self, axis, y_axis_type='linear', y_max=0.):
+
+        region = region_dropdown.value        
+        region_data = None
+        if region_dropdown.value != 'None':
+            region_data = self.data_description['regional_data'][region]
+        
+        for pop_name in self.model.populations:
+            pop = self.model.populations[pop_name]
+            if not pop.hidden:
+                t = range(len(pop.history))
+                axis.plot(t, pop.history, lw=2, label=pop_name, color=pop.color)
+                
+                if region_data is not None:
+                    if pop_name in region_data:
+                        if 'total' in region_data[pop_name]:
+                            filename = region_data[pop_name]['total']['filename']
+                            header = region_data[pop_name]['total']['header']
+                            data = self.pd_dict[filename][header].values
+                            td = range(len(data))
+                            axis.scatter(td, data, color=pop.color)
+        title = 'Totals'
+        if region_data is not None:
+            title += ' - ' + region
+        axis.set_title(title)
+        axis.legend()
+        axis.set_yscale(y_axis_type)
+        #axis.set_xlim(left=-1, right=n_days_widget.value)
+        if y_axis_type == 'log':
+            axis.set_ylim(bottom=3)
+        else:
+            axis.set_ylim(bottom=0)
+        if (y_max > 0.):
+            axis.set_ylim(top=y_max)
+            
+    def plot_daily(self, axis, y_axis_type='linear', y_max=0.):
+        
+        region = region_dropdown.value        
+        region_data = None
+        if region_dropdown.value != 'None':
+            region_data = self.data_description['regional_data'][region]
+        
+        for pop_name in self.model.populations:
+            pop = self.model.populations[pop_name]
+            if not pop.hidden and pop.monotonic:
+                daily = delta(pop.history)
+                t = range(len(daily))
+                axis.step(t, daily, lw=2, label=pop_name, color=pop.color)
+                
+                if region_data is not None:
+                    if pop_name in region_data:
+                        if 'daily' in region_data[pop_name]:
+                            filename = region_data[pop_name]['daily']['filename']
+                            header = region_data[pop_name]['daily']['header']
+                            data = self.pd_dict[filename][header].values
+                            td = range(len(data))
+                            axis.scatter(td, data, color=pop.color)
+        
+        title = 'Daily'
+        if region_data is not None:
+            title += ' - ' + region
+        axis.set_title(title)
+        axis.legend()
+        axis.set_yscale(y_axis_type)
+        #axis.set_xlim(left=-1, right=n_days_widget.value)
+        if y_axis_type == 'log':
+            axis.set_ylim(bottom=3)
+        else:
+            axis.set_ylim(bottom=0)
+        if (y_max > 0.):
+            axis.set_ylim(top=y_max)
+    
+    t0_widget = widgets.DatePicker(
+        description='t_0:', value = date(2020,3,1), tooltip='Defines day 0 on plots',)
+ 
+# Look into this later:
+#    time_step_widget = widgets.BoundedFloatText(
+#        value=1., min=0.02, max=2.0, step=0.05, description='time_step:',
+#        tooltip='length of each step in the calculation: disabled for now', disabled=True)
+    
+    n_days_widget = widgets.BoundedIntText(
+        value=60, min=10, max=300, step=1, description='n_days:',
+        tooltip='number of days to model: sets the upper time range of plots')
+    
+    plot_1 = widgets.Dropdown(
+        options=['linear total', 'log total', 'linear daily', 'log daily'],
+        value='linear total', description='Plot #1:', tooltip='Plot on left if the second plot is not None')
+    
+    plot_2 = widgets.Dropdown(
+        options=['linear total', 'log total', 'linear daily', 'log daily'],
+        value='log total', description='Plot #2:', tooltip='Plot on the right')
+    
+    y_max_1 = widgets.BoundedFloatText(
+        value=0., min=0., max=1.E8, step=100., description='y_max #1:',
+        tooltip='maximum of vertical axis for Plot #1. (0 -> autoscale)', disabled=False)
+    
+    y_max_2 = widgets.BoundedFloatText(
+        value=0., min=0., max=1.E8, step=100., description='y_max #2:',
+        tooltip='maximum of vertical axis for Plot #2. (0 -> autoscale)', disabled=False)
+    
+    output = widgets.Output()
+    plot_output = widgets.Output()
+    #plot_output.layout.height = '50px'
+    
+    plot_button = widgets.Button(
+        description='  Plot', button_style='', tooltip='Run model and plot result', icon='check')
+    reset_button = widgets.Button(description='  Reset', button_style='warning', 
+                                  tooltip='Undo all changes to parameters since loading model', icon='warning')
+    
+    def make_plot(b):
+        output.clear_output(True)
+        plot_output.clear_output(True)
+        
+        self.model.parameters[par_down.value].set_value(val_text.value)
+        #run model with current parameters
+        before = time.process_time()
+        self.model.reset()
+        self.model.evolve_expectations(n_days_widget.value)
+        after = time.process_time()
+        run_time = int(round((after-before)*1000.))
+        with output:
+            dash = '-' * 35
+            print('Run time = '+str(run_time)+' ms')
+            print()
+            print('Max. expectations in the period:')
+            print()
+            print('population              max   day')
+            print(dash)
+            for pop_name in self.model.populations:
+                pop = self.model.populations[pop_name]
+                if not pop.hidden:
+                    print('{:<22s}{:>5d}{:>5d}'\
+                          .format(pop_name,int(round(np.max(pop.history))),
+                                  int(round(np.argmax(pop.history))))) 
+        with plot_output:
+    
+            fig, axes = plt.subplots(1, 2, figsize=(16,7))
+            t0text = t0_widget.value.strftime("%b %d, %Y")
+            axis = axes[0]
+            y_axis_type = 'linear'
+            if 'linear' not in plot_1.value:
+                y_axis_type = 'log'
+            y_max = y_max_1.value
+            if 'total' in plot_1.value:
+                plot_total(self, axis, y_axis_type, y_max)
+            else:
+                plot_daily(self, axis, y_axis_type, y_max)
+    
+            if self.data_description is not None:
+                pass
+                
+            axis.set_xlabel('days since '+t0text)
+    
+            axis = axes[1]
+            y_axis_type = 'linear'
+            if 'linear' not in plot_2.value:
+                y_axis_type = 'log'
+            y_max = y_max_2.value
+            if 'total' in plot_2.value:
+                plot_total(self, axis, y_axis_type, y_max)
+            else:
+                plot_daily(self, axis, y_axis_type, y_max)
+    
+            axis.set_xlabel('days since '+t0text)
+    
+            plt.show()
+            
+    def reset_parameters(b):
+        output.clear_output(True)
+        self.model.reset()
+        for par_name in self.model.parameters:
+            par = self.model.parameters[par_name]
+            par.reset()
+        if par_down.value in self.model.parameters:
+            reset_value = self.model.parameters[par_down.value].get_value()
+            val_text.value = reset_value
+        with output:
+            print('All parameters reset')
+            print('to their initial values!')
+        
+    plot_button.on_click(make_plot)
+    reset_button.on_click(reset_parameters)
+    
+    pars = get_par_list(self)    
+    par_down = widgets.Dropdown(options=pars, description='Parameter:', disabled=False)
+    
+    par = self.model.parameters[pars[0]]
+    #Bug in BoundedFloatText - regularly incorrect read back 
+    #val_text = widgets.BoundedFloatText(min=par.get_min(), max=par.get_max(), value = par.get_value())
+    
+    #similar bug in the slide
+    #val_slide = widgets.FloatSlider(min=par.get_min(), max=par.get_max(), value = par.get_value(),
+    #        continuous_update=False, orientation='horizontal', readout=True, readout_format='.3f')
+    val_text = widgets.FloatText(value = par.get_value(), description='Value:')
+    #widgets.link((val_slide, 'value'), (val_text, 'value'))
+    
+    def dropdown_eventhandler(change):
+        # update list of visible parameters in case it has changed
+        pars = get_par_list()
+        par_down.options = pars
+        par = self.model.parameters[par_down.value]
+        val_text.value = par.get_value()
+    
+    def val_change_eventhandler(change):
+        if par_down.value in self.model.parameters:
+            self.model.parameters[par_down.value].set_value(change['new'])        
+            b=[]
+            make_plot(b)
+    
+    par_down.observe(dropdown_eventhandler, names='value')
+    val_text.observe(val_change_eventhandler, names='value')
+
+    trans_list, trans_enabled = get_transitions_lists(self)
+        
+    transitions_chooser = widgets.SelectMultiple(
+        options=trans_list, value=trans_enabled, rows=1,
+        description='Transitions:')
+    
+    def tran_choo_eventhandler(change):    
+        output.clear_output(True)
+        trans_enabled = transitions_chooser.value
+        with output:
+            print('Changes made to transition status:')
+            for tran_name in self.model.transitions:
+                tran = self.model.transitions[tran_name]
+                was_enabled = ' was disabled'
+                if tran.enabled:
+                    was_enabled = ' was enabled'
+                # set the bit in the model:
+                tran.enabled = tran_name in trans_enabled
+                now_enabled = 'and is now disabled.'
+                if tran.enabled:
+                    now_enabled = 'and is now enabled.'
+                if was_enabled != now_enabled:
+                    print(tran_name+was_enabled)
+                    print(now_enabled)
+
+    transitions_chooser.observe(tran_choo_eventhandler, names='value')
+    
+    # This will generally be called before data has been read, but will
+    # be populated once the datafile is read
+    region_list, region_selected = get_region_list(self)
+    region_dropdown = widgets.Dropdown(options=region_list,
+                                       description='Region data:')
+
+    def region_dropdown_eventhandler(change):    
+        output.clear_output(True)
+        
+        region_selected = region_dropdown.value
+        if self.data_description is not None:
+            self.data_description['selected_region'] = region_selected    
+        
+        with output:
+            print('Changed data region to: '+region_selected)
+                
+    region_dropdown.observe(region_dropdown_eventhandler, names='value')
+
+    def save_model_file(b):
+        output.clear_output(True)
+        mfn = model_filename.value
+        if '.pypm' not in mfn:
+            mfn = mfn + '.pypm'
+        mfolder = model_folder.value
+        filename = self.model_folder_text_widget.value+'/'+mfn
+        if mfolder not in ['','.']:
+            filename = self.model_folder_text_widget.value+\
+                '/'+mfolder+'/'+mfn
+        self.model.name = model_name.value
+        self.model.description = model_description.value
+        self.model.save_file(filename)
+    
+        with output:
+            print('Success. Model saved to:')
+            print(filename)
+    
+    header_html = widgets.HTML(
+        value="<h1><a href:='https://www.pypm.ca'>pyPM</a> explore</h1>",
+        placeholder='Some HTML',
+        description='')
+    
+    hspace = widgets.HTML(
+        value="&nbsp;"*24,
+        placeholder='Some HTML',
+        description='')
+    
+    model_name = widgets.Text(
+        value=self.model.name,
+        tooltip='Short name indicating region and version number',
+        description='Model name:')
+    
+    model_description = widgets.Textarea(
+        value='Hello World - replace by model description',
+        tooltip='Describe key aspects of this model for future reference',
+        description='Description:')
+    
+    model_id = widgets.VBox([model_name, model_description])
+    
+    header_save_hspace = widgets.HTML(
+        value="&nbsp;"*8,
+        placeholder='Some HTML',
+        description='')
+    
+    model_folder = widgets.Text(
+        value='.',
+        placeholder='relative to current model folder',
+        description='Folder:')
+    
+    model_filename = widgets.Text(
+        value='',
+        tooltip='name',
+        placeholder='filename',
+        description='Filename:')
+    
+    model_save_button = widgets.Button(
+        description='  Save', button_style='', tooltip='Save model to the specified file', icon='file')
+    
+    model_save = widgets.VBox([model_save_button, model_folder, model_filename])
+    
+    header_hbox = widgets.HBox([header_html, hspace, model_id, header_save_hspace,
+                                model_save])
+    
+    model_save_button.on_click(save_model_file)
+        
+    left_box = widgets.VBox([t0_widget, n_days_widget, plot_1, plot_2, y_max_1, y_max_2])
+    right_box = widgets.VBox([widgets.HBox([plot_button, reset_button]), 
+                              par_down, val_text, transitions_chooser, region_dropdown])
+    
+    return AppLayout(header=header_hbox,
+              left_sidebar=left_box,
+              center=output,
+              right_sidebar=right_box,
+              footer=plot_output,
+              pane_widths=[2, 2, 2],
+              pane_heights=[1, 2, '450px'])
