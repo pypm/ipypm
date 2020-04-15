@@ -10,6 +10,7 @@ Testing ipython calls from Jupyter notebook
 
 import main_tab
 import explore_tab
+import compare_tab
 
 class ipypm:
     """ GUI for pyPM engine based on ipywidgets for use with Jupyter notebook
@@ -18,11 +19,13 @@ class ipypm:
     def __init__(self):
 
         self.model = None
+        self.models_compare = {}
         self.data_description = None
         self.pd_dict = None
         self.model_folder_text_widget = None
         self.main_tab_widget = None
         self.open_tab_widget = None
+        self.last_plot = None
 
     def get_display(self):
         """ Returns widget that can be displayed in a Jupyter notebook cell
@@ -43,3 +46,4 @@ class ipypm:
         
     def new_data_opened(self):
         explore_tab.new_data_opened(self)
+        compare_tab.new_data_opened(self)

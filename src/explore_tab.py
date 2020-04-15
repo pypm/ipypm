@@ -14,6 +14,7 @@ import time
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.transforms as transforms
 
 model_name = None
 model_description = None
@@ -69,7 +70,8 @@ def new_model_opened(self):
     transitions_chooser.enabled = trans_enabled
 
 def get_tab(self):
-    global model_name, model_description, transitions_chooser, region_dropdown
+    global model_name, model_description, transitions_chooser, \
+        region_dropdown
 
     def delta(cumul):
         diff = []
@@ -214,7 +216,7 @@ def get_tab(self):
         with plot_output:
     
             fig, axes = plt.subplots(1, 2, figsize=(16,7))
-            t0text = t0_widget.value.strftime("%b %d, %Y")
+
             axis = axes[0]
             y_axis_type = 'linear'
             if 'linear' not in plot_1.value:
@@ -224,11 +226,8 @@ def get_tab(self):
                 plot_total(self, axis, y_axis_type, y_max)
             else:
                 plot_daily(self, axis, y_axis_type, y_max)
-    
-            if self.data_description is not None:
-                pass
-                
-            axis.set_xlabel('days since '+t0text)
+            plot_improvements(axis)
+
     
             axis = axes[1]
             y_axis_type = 'linear'
@@ -239,10 +238,38 @@ def get_tab(self):
                 plot_total(self, axis, y_axis_type, y_max)
             else:
                 plot_daily(self, axis, y_axis_type, y_max)
+            plot_improvements(axis)
     
-            axis.set_xlabel('days since '+t0text)
-    
+            self.last_plot = plt.gcf()
             plt.show()
+            
+    def plot_improvements(axis):
+        t0text = t0_widget.value.strftime("%b %d")
+        axis.set_xlabel('days since '+t0text,
+                           horizontalalignment='right', position = (1.,-0.1))
+        axis.set_ylabel('Number of people')
+           
+        pypm_props = dict(boxstyle='round', facecolor='blue', alpha=0.1)
+        axis.text(0.01, 1.02, 'pyPM.ca', transform=axis.transAxes, fontsize=10,
+                     verticalalignment='bottom', bbox=pypm_props)
+
+        # indicate times of transitions
+        x_transform = transforms.blended_transform_factory(axis.transData, axis.transAxes)
+        trans_list, trans_enabled = get_transitions_lists(self)
+        i = 0
+        for tran_name in trans_enabled:
+            i+=1
+            x_text = 'X'+str(i)
+            tran = self.model.transitions[tran_name]           
+            x_props = dict(boxstyle='rarrow', facecolor='red', alpha=0.3)
+            axis.text(tran.trigger_step, -0.1, x_text , transform=x_transform, fontsize=10,
+                      verticalalignment='top', horizontalalignment='center', bbox=x_props)
+            
+            ax.annotate("",
+            xy=(tran.trigger_step, 0.), transform=x_transform,
+            xytext=(tran.trigger_step, 0.1), textcoords='data',
+            arrowprops=dict(arrowstyle="simple",
+                            connectionstyle="arc3"))
             
     def reset_parameters(b):
         output.clear_output(True)
@@ -275,7 +302,7 @@ def get_tab(self):
     
     def dropdown_eventhandler(change):
         # update list of visible parameters in case it has changed
-        pars = get_par_list()
+        pars = get_par_list(self)
         par_down.options = pars
         par = self.model.parameters[par_down.value]
         val_text.value = par.get_value()
@@ -302,6 +329,7 @@ def get_tab(self):
             print('Changes made to transition status:')
             for tran_name in self.model.transitions:
                 tran = self.model.transitions[tran_name]
+                prev_enabled = tran.enabled
                 was_enabled = ' was disabled'
                 if tran.enabled:
                     was_enabled = ' was enabled'
@@ -310,7 +338,7 @@ def get_tab(self):
                 now_enabled = 'and is now disabled.'
                 if tran.enabled:
                     now_enabled = 'and is now enabled.'
-                if was_enabled != now_enabled:
+                if prev_enabled != tran.enabled:
                     print(tran_name+was_enabled)
                     print(now_enabled)
 
@@ -337,21 +365,46 @@ def get_tab(self):
     def save_model_file(b):
         output.clear_output(True)
         mfn = model_filename.value
-        if '.pypm' not in mfn:
-            mfn = mfn + '.pypm'
-        mfolder = model_folder.value
-        filename = self.model_folder_text_widget.value+'/'+mfn
-        if mfolder not in ['','.']:
-            filename = self.model_folder_text_widget.value+\
-                '/'+mfolder+'/'+mfn
-        self.model.name = model_name.value
-        self.model.description = model_description.value
-        self.model.save_file(filename)
-    
+        if len(mfn) > 0:
+            if '.pypm' not in mfn:
+                mfn = mfn + '.pypm'
+            filename = self.model_folder_text_widget.value+'/'+mfn
+            mfolder = model_folder.value
+            if mfolder not in ['','.']:
+                filename = self.model_folder_text_widget.value+\
+                    '/'+mfolder+'/'+mfn
+            self.model.name = model_name.value
+            self.model.description = model_description.value
+            self.model.save_file(filename)
+        
+            with output:
+                print('Success. Model saved to:')
+                print(filename)
+                model_filename.value=''
+            
+        else:
+            with output:
+                print(' Model not saved: Missing filename.')
+            
+    def save_plot_file(b):
+        # use the same widgets for filename as model
+        output.clear_output(True)
         with output:
-            print('Success. Model saved to:')
-            print(filename)
-    
+            mfn = model_filename.value
+            if len(mfn) > 0:
+                plot_filename = self.model_folder_text_widget.value+'/'+mfn
+                mfolder = model_folder.value
+                if mfolder not in ['','.']:
+                    plot_filename = self.model_folder_text_widget.value+\
+                        '/'+mfolder+'/'+mfn
+                self.last_plot.savefig(plot_filename)
+                print('The plot was saved to:')
+                print(plot_filename)
+                model_filename.value = ''
+            else:
+                print('No filename provided.')
+                print('Please try again.')                
+
     header_html = widgets.HTML(
         value="<h1><a href:='https://www.pypm.ca'>pyPM</a> explore</h1>",
         placeholder='Some HTML',
@@ -391,14 +444,20 @@ def get_tab(self):
         description='Filename:')
     
     model_save_button = widgets.Button(
-        description='  Save', button_style='', tooltip='Save model to the specified file', icon='file')
+        description='  Save model', button_style='', 
+        tooltip='Save model as currently defined to the specified file', icon='file')
     
-    model_save = widgets.VBox([model_save_button, model_folder, model_filename])
+    plot_save_button = widgets.Button(
+        description='  Save plot', button_style='', tooltip='Save plot to the specified file', icon='image')
+    
+    model_save = widgets.VBox([widgets.HBox([model_save_button, plot_save_button]),
+                               model_folder, model_filename])
     
     header_hbox = widgets.HBox([header_html, hspace, model_id, header_save_hspace,
                                 model_save])
     
     model_save_button.on_click(save_model_file)
+    plot_save_button.on_click(save_plot_file)
         
     left_box = widgets.VBox([t0_widget, n_days_widget, plot_1, plot_2, y_max_1, y_max_2])
     right_box = widgets.VBox([widgets.HBox([plot_button, reset_button]), 
@@ -410,4 +469,4 @@ def get_tab(self):
               right_sidebar=right_box,
               footer=plot_output,
               pane_widths=[2, 2, 2],
-              pane_heights=[1, 2, '450px'])
+              pane_heights=[1, 2, '460px'])

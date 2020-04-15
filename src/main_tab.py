@@ -11,6 +11,7 @@ import ipywidgets as widgets
 import open_tab
 import settings_tab
 import explore_tab
+import compare_tab
 
 def init_tab(self):
 
@@ -25,8 +26,12 @@ def all_tabs(self):
     if self.model is not None:
         settings_t = settings_tab.get_tab(self)
         explore_t = explore_tab.get_tab(self)
-        self.main_tab_widget.children = [self.open_tab_widget, settings_t, explore_t]
+        compare_t = compare_tab.get_tab(self)
+        self.main_tab_widget.children = [self.open_tab_widget, 
+                                         settings_t, explore_t,
+                                         compare_t]
         self.main_tab_widget.set_title(0, 'Open')
         self.main_tab_widget.set_title(1, 'Settings (explore)')
         self.main_tab_widget.set_title(2, 'Explore')
+        self.main_tab_widget.set_title(3, 'Compare')
     
