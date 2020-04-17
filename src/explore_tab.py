@@ -16,10 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
 
-model_name = None
-model_description = None
-transitions_chooser = None
-region_dropdown = None
+import pickle
 
 def get_par_list(self):
     pars = []
@@ -52,26 +49,27 @@ def get_region_list(self):
 
 def new_data_opened(self):
     # update the region chooser
-    global region_dropdown
     region_list, region_selected = get_region_list(self)
-    region_dropdown.options = region_list
-    region_dropdown.value = region_selected
-    region_dropdown.disabled = False
+    self.region_dropdown.options = region_list
+    self.region_dropdown.value = region_selected
+    self.region_dropdown.disabled = False
 
 def new_model_opened(self):
     # update the text widgets to show the current model
-    global model_name, model_description, transitions_chooser
-    model_name.value = self.model.name
-    model_description.value = self.model.description
+    self.model_name.value = self.model.name
+    self.model_description.value = self.model.description
     
     # update the list of transitions
     trans_list, trans_enabled = get_transitions_lists(self)
-    transitions_chooser.options = trans_list
-    transitions_chooser.enabled = trans_enabled
+    self.transitions_chooser.options = trans_list
+    self.transitions_chooser.enabled = trans_enabled
+    
+    par_down = self.param_dropdown
+    if par_down.value in self.model.parameters:
+        reset_value = self.model.parameters[par_down.value].get_value()
+        self.val_text_widget.value = reset_value
 
 def get_tab(self):
-    global model_name, model_description, transitions_chooser, \
-        region_dropdown
 
     def delta(cumul):
         diff = []
@@ -81,9 +79,9 @@ def get_tab(self):
     
     def plot_total(self, axis, y_axis_type='linear', y_max=0.):
 
-        region = region_dropdown.value        
+        region = self.region_dropdown.value        
         region_data = None
-        if region_dropdown.value != 'None':
+        if self.region_dropdown.value != 'None':
             region_data = self.data_description['regional_data'][region]
         
         for pop_name in self.model.populations:
@@ -116,9 +114,9 @@ def get_tab(self):
             
     def plot_daily(self, axis, y_axis_type='linear', y_max=0.):
         
-        region = region_dropdown.value        
+        region = self.region_dropdown.value        
         region_data = None
-        if region_dropdown.value != 'None':
+        if self.region_dropdown.value != 'None':
             region_data = self.data_description['regional_data'][region]
         
         for pop_name in self.model.populations:
@@ -192,7 +190,7 @@ def get_tab(self):
         output.clear_output(True)
         plot_output.clear_output(True)
         
-        self.model.parameters[par_down.value].set_value(val_text.value)
+        self.model.parameters[self.param_dropdown.value].set_value(self.val_text_widget.value)
         #run model with current parameters
         before = time.process_time()
         self.model.reset()
@@ -200,7 +198,7 @@ def get_tab(self):
         after = time.process_time()
         run_time = int(round((after-before)*1000.))
         with output:
-            dash = '-' * 35
+            dash = '-' * 33
             print('Run time = '+str(run_time)+' ms')
             print()
             print('Max. expectations in the period:')
@@ -265,21 +263,16 @@ def get_tab(self):
             axis.text(tran.trigger_step, -0.1, x_text , transform=x_transform, fontsize=10,
                       verticalalignment='top', horizontalalignment='center', bbox=x_props)
             
-            ax.annotate("",
-            xy=(tran.trigger_step, 0.), transform=x_transform,
-            xytext=(tran.trigger_step, 0.1), textcoords='data',
-            arrowprops=dict(arrowstyle="simple",
-                            connectionstyle="arc3"))
-            
     def reset_parameters(b):
         output.clear_output(True)
         self.model.reset()
         for par_name in self.model.parameters:
             par = self.model.parameters[par_name]
             par.reset()
+        par_down = self.param_dropdown
         if par_down.value in self.model.parameters:
             reset_value = self.model.parameters[par_down.value].get_value()
-            val_text.value = reset_value
+            self.val_text_widget.value = reset_value
         with output:
             print('All parameters reset')
             print('to their initial values!')
@@ -288,7 +281,7 @@ def get_tab(self):
     reset_button.on_click(reset_parameters)
     
     pars = get_par_list(self)    
-    par_down = widgets.Dropdown(options=pars, description='Parameter:', disabled=False)
+    self.param_dropdown = widgets.Dropdown(options=pars, description='Parameter:', disabled=False)
     
     par = self.model.parameters[pars[0]]
     #Bug in BoundedFloatText - regularly incorrect read back 
@@ -297,34 +290,34 @@ def get_tab(self):
     #similar bug in the slide
     #val_slide = widgets.FloatSlider(min=par.get_min(), max=par.get_max(), value = par.get_value(),
     #        continuous_update=False, orientation='horizontal', readout=True, readout_format='.3f')
-    val_text = widgets.FloatText(value = par.get_value(), description='Value:')
+    self.val_text_widget = widgets.FloatText(value = par.get_value(), description='Value:')
     #widgets.link((val_slide, 'value'), (val_text, 'value'))
     
     def dropdown_eventhandler(change):
         # update list of visible parameters in case it has changed
         pars = get_par_list(self)
-        par_down.options = pars
-        par = self.model.parameters[par_down.value]
-        val_text.value = par.get_value()
+        self.param_dropdown.options = pars
+        par = self.model.parameters[self.param_dropdown.value]
+        self.val_text_widget.value = par.get_value()
     
     def val_change_eventhandler(change):
-        if par_down.value in self.model.parameters:
-            self.model.parameters[par_down.value].set_value(change['new'])        
+        if self.param_dropdown.value in self.model.parameters:
+            self.model.parameters[self.param_dropdown.value].set_value(change['new'])        
             b=[]
             make_plot(b)
     
-    par_down.observe(dropdown_eventhandler, names='value')
-    val_text.observe(val_change_eventhandler, names='value')
+    self.param_dropdown.observe(dropdown_eventhandler, names='value')
+    self.val_text_widget.observe(val_change_eventhandler, names='value')
 
     trans_list, trans_enabled = get_transitions_lists(self)
         
-    transitions_chooser = widgets.SelectMultiple(
+    self.transitions_chooser = widgets.SelectMultiple(
         options=trans_list, value=trans_enabled, rows=1,
         description='Transitions:')
     
     def tran_choo_eventhandler(change):    
         output.clear_output(True)
-        trans_enabled = transitions_chooser.value
+        trans_enabled = self.transitions_chooser.value
         with output:
             print('Changes made to transition status:')
             for tran_name in self.model.transitions:
@@ -342,25 +335,25 @@ def get_tab(self):
                     print(tran_name+was_enabled)
                     print(now_enabled)
 
-    transitions_chooser.observe(tran_choo_eventhandler, names='value')
+    self.transitions_chooser.observe(tran_choo_eventhandler, names='value')
     
     # This will generally be called before data has been read, but will
     # be populated once the datafile is read
     region_list, region_selected = get_region_list(self)
-    region_dropdown = widgets.Dropdown(options=region_list,
+    self.region_dropdown = widgets.Dropdown(options=region_list,
                                        description='Region data:')
 
     def region_dropdown_eventhandler(change):    
         output.clear_output(True)
         
-        region_selected = region_dropdown.value
+        region_selected = self.region_dropdown.value
         if self.data_description is not None:
             self.data_description['selected_region'] = region_selected    
         
         with output:
             print('Changed data region to: '+region_selected)
                 
-    region_dropdown.observe(region_dropdown_eventhandler, names='value')
+    self.region_dropdown.observe(region_dropdown_eventhandler, names='value')
 
     def save_model_file(b):
         output.clear_output(True)
@@ -373,8 +366,8 @@ def get_tab(self):
             if mfolder not in ['','.']:
                 filename = self.model_folder_text_widget.value+\
                     '/'+mfolder+'/'+mfn
-            self.model.name = model_name.value
-            self.model.description = model_description.value
+            self.model.name = self.model_name.value
+            self.model.description = self.model_description.value
             self.model.save_file(filename)
         
             with output:
@@ -404,31 +397,26 @@ def get_tab(self):
             else:
                 print('No filename provided.')
                 print('Please try again.')                
-
-    header_html = widgets.HTML(
-        value="<h1><a href:='https://www.pypm.ca'>pyPM</a> explore</h1>",
-        placeholder='Some HTML',
-        description='')
     
     hspace = widgets.HTML(
-        value="&nbsp;"*24,
+        value="&nbsp;"*4,
         placeholder='Some HTML',
         description='')
     
-    model_name = widgets.Text(
+    self.model_name = widgets.Text(
         value=self.model.name,
         tooltip='Short name indicating region and version number',
         description='Model name:')
     
-    model_description = widgets.Textarea(
+    self.model_description = widgets.Textarea(
         value='Hello World - replace by model description',
         tooltip='Describe key aspects of this model for future reference',
         description='Description:')
     
-    model_id = widgets.VBox([model_name, model_description])
+    model_id = widgets.VBox([self.model_name, self.model_description])
     
     header_save_hspace = widgets.HTML(
-        value="&nbsp;"*8,
+        value="&nbsp;"*16,
         placeholder='Some HTML',
         description='')
     
@@ -453,7 +441,21 @@ def get_tab(self):
     model_save = widgets.VBox([widgets.HBox([model_save_button, plot_save_button]),
                                model_folder, model_filename])
     
-    header_hbox = widgets.HBox([header_html, hspace, model_id, header_save_hspace,
+    model_upload = widgets.FileUpload(accept='.pypm',multiple=False)
+    def model_upload_eventhandler(change):    
+        filename = list(model_upload.value.keys())[0]
+        my_pickle = model_upload.value[filename]['content']
+        self.model = pickle.loads(my_pickle)
+        self.new_model_opened()
+    model_upload.observe(model_upload_eventhandler, names='value')
+
+    header_html = widgets.VBox([
+        widgets.HTML(
+            value="<h1><a href:='https://www.pypm.ca'>pyPM</a></h1><p style='font-size: 26px;'>explore</p>",
+            placeholder='',
+            description='')])
+
+    header_hbox = widgets.HBox([header_html, hspace, model_upload, model_id, header_save_hspace,
                                 model_save])
     
     model_save_button.on_click(save_model_file)
@@ -461,7 +463,7 @@ def get_tab(self):
         
     left_box = widgets.VBox([t0_widget, n_days_widget, plot_1, plot_2, y_max_1, y_max_2])
     right_box = widgets.VBox([widgets.HBox([plot_button, reset_button]), 
-                              par_down, val_text, transitions_chooser, region_dropdown])
+                              self.param_dropdown, self.val_text_widget, self.transitions_chooser, self.region_dropdown])
     
     return AppLayout(header=header_hbox,
               left_sidebar=left_box,

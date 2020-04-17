@@ -26,6 +26,13 @@ class ipypm:
         self.main_tab_widget = None
         self.open_tab_widget = None
         self.last_plot = None
+        self.transitions_chooser = None
+        self.region_dropdown = None
+        self.region_dropdowns = []
+        self.model_name = None
+        self.model_description = None
+        self.param_dropdown = None
+        self.val_text_widget = None
 
     def get_display(self):
         """ Returns widget that can be displayed in a Jupyter notebook cell

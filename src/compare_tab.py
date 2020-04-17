@@ -24,8 +24,6 @@ import matplotlib.transforms as transforms
 
 import pickle
 
-region_dropdowns = []
-
 def get_region_list(self):
     region_list = ['None']
     region_selected = 'None'
@@ -37,14 +35,12 @@ def get_region_list(self):
 
 def new_data_opened(self):
     # update the region choosers
-    global region_dropdowns
     region_list, region_selected = get_region_list(self)
-    for region_dropdown in region_dropdowns:
+    for region_dropdown in self.region_dropdowns:
         region_dropdown.options = region_list
         region_dropdown.value = region_selected
 
 def get_tab(self):
-    global region_dropdowns
     
     # keys for the two models in self.models_compare dictionary
     m_ids = ['a','b']
@@ -177,7 +173,7 @@ def get_tab(self):
                     axis = axes[i]
                     m_id = m_ids[i]
                     model = self.models_compare[m_id]
-                    region_dropdown = region_dropdowns[i]
+                    region_dropdown = self.region_dropdowns[i]
                     region = region_dropdown.value
 
                     if 'total' in plot_type.value:
@@ -192,7 +188,7 @@ def get_tab(self):
                 # to be implemented!
 
                 
-            plt.suptitle(comparison_notes.value,x=0.1,size='small')
+            plt.suptitle(comparison_notes.value,x=0.1,size='small',ha='left')
             self.last_plot = plt.gcf()
             plt.show()
             
@@ -212,7 +208,7 @@ def get_tab(self):
     # be populated once the datafile is read
     
     region_list, region_selected = get_region_list(self)
-    region_dropdowns = [widgets.Dropdown(options=region_list,description='Region data:'),
+    self.region_dropdowns = [widgets.Dropdown(options=region_list,description='Region data:'),
                         widgets.Dropdown(options=region_list,description='Region data:')]
             
     def save_plot_file(b):
@@ -294,9 +290,9 @@ def get_tab(self):
     header_hbox = widgets.HBox([header_html, hspace, comparison_notes,header_save_hspace,
                                 plot_save])
     
-    left_box = widgets.VBox([model_blocks[0], region_dropdowns[0]])
+    left_box = widgets.VBox([model_blocks[0], self.region_dropdowns[0]])
     center_box = widgets.VBox([t0_widget,n_days_widget, plot_type, plot_scaled, plot_compare, y_max_compare])
-    right_box = widgets.VBox([model_blocks[1], region_dropdowns[1]])
+    right_box = widgets.VBox([model_blocks[1], self.region_dropdowns[1]])
     
     return AppLayout(header=header_hbox,
               left_sidebar=left_box,
@@ -304,5 +300,5 @@ def get_tab(self):
               right_sidebar=right_box,
               footer=plot_output,
               pane_widths=[2, 2, 2],
-              pane_heights=[1, 2, '460px'])
+              pane_heights=[1, 2, '470px'])
     
