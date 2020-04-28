@@ -16,6 +16,7 @@ from __future__ import print_function
 import ipywidgets as widgets
 from ipywidgets import AppLayout
 
+import copy
 from datetime import date
 
 import numpy as np
@@ -25,7 +26,7 @@ import matplotlib.transforms as transforms
 import pickle
 
 def get_region_list(self):
-    region_list = ['None']
+    region_list = ['None', 'Simulation']
     region_selected = 'None'
     if self.data_description is not None:
         region_list += list(self.data_description['regional_data'].keys())
@@ -51,10 +52,10 @@ def get_tab(self):
             diff.append(cumul[i] - cumul[i-1])
         return diff
     
-    def plot_total(self, model, region, axis, y_axis_type='linear', y_max=0.):
-       
+    def plot_total(self, model, sim_model, region, axis, y_axis_type='linear', y_max=0.):
+     
         region_data = None
-        if region != 'None':
+        if region != 'None' and region != 'Simulation':
             region_data = self.data_description['regional_data'][region]
         
         for pop_name in model.populations:
@@ -72,9 +73,17 @@ def get_tab(self):
                             td = range(len(data))
                             axis.scatter(td, data, color=pop.color)
                             
+                if region == 'Simulation':
+                    sim_pop = sim_model.populations[pop_name]
+                    if hasattr(sim_pop,'show_sim') and sim_pop.show_sim:
+                        st = range(len(sim_pop.history))
+                        axis.scatter(st, sim_pop.history, color=sim_pop.color)
+                            
         title = 'Totals'
         if region_data is not None:
             title += ' - ' + region
+        if region == 'Simulation':
+            title += ' - Simulation'
         axis.set_title(title)
         axis.legend()
         axis.set_yscale(y_axis_type)
@@ -86,10 +95,10 @@ def get_tab(self):
         if (y_max > 0.):
             axis.set_ylim(top=y_max)
             
-    def plot_daily(self, model, region, axis, y_axis_type='linear', y_max=0.):
+    def plot_daily(self, model, sim_model, region, axis, y_axis_type='linear', y_max=0.):
                 
         region_data = None
-        if region != 'None':
+        if region != 'None' and region != 'Simulation':
             region_data = self.data_description['regional_data'][region]
         
         for pop_name in model.populations:
@@ -107,10 +116,19 @@ def get_tab(self):
                             data = self.pd_dict[filename][header].values
                             td = range(len(data))
                             axis.scatter(td, data, color=pop.color)
-        
+
+                if region == 'Simulation':
+                    sim_pop = sim_model.populations[pop_name]
+                    if hasattr(sim_pop,'show_sim') and sim_pop.show_sim:
+                        sim_daily = delta(sim_pop.history)
+                        st = range(len(sim_daily))
+                        axis.scatter(st, sim_daily.history, color=sim_pop.color)
+
         title = 'Daily'
         if region_data is not None:
             title += ' - ' + region
+        if region == 'Simulation':
+            title += ' - Simulation'
         axis.set_title(title)
         axis.legend()
         axis.set_yscale(y_axis_type)
@@ -175,11 +193,17 @@ def get_tab(self):
                     model = self.models_compare[m_id]
                     region_dropdown = self.region_dropdowns[i]
                     region = region_dropdown.value
+                    
+                    sim_model = None
+                    if region == 'Simulation':
+                        sim_model = copy.deepcopy(self.model)
+                        sim_model.reset()
+                        sim_model.generate_data(n_days_widget.value)
 
                     if 'total' in plot_type.value:
-                        plot_total(self, model, region, axis, y_axis_type, y_max)
+                        plot_total(self, model, sim_model, region, axis, y_axis_type, y_max)
                     else:
-                        plot_daily(self, model, region, axis, y_axis_type, y_max)
+                        plot_daily(self, model, sim_model, region, axis, y_axis_type, y_max)
                         
                     plot_improvements(axis)
 

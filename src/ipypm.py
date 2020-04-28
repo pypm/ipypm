@@ -19,6 +19,7 @@ class ipypm:
     def __init__(self):
 
         self.model = None
+        self.sim_model = None
         self.models_compare = {}
         self.data_description = None
         self.pd_dict = None
@@ -33,6 +34,11 @@ class ipypm:
         self.model_description = None
         self.param_dropdown = None
         self.val_text_widget = None
+        self.seed_text_widget = None
+        self.pop_data = None
+        self.pop_dropdown = None
+        self.date_range_text = None
+        self.full_par_dropdown = None
 
     def get_display(self):
         """ Returns widget that can be displayed in a Jupyter notebook cell

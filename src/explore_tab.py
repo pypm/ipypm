@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This tab allows the user to explore the current model by adjusting parameters
+This tab allows the user to explore the current model by manually adjusting parameters
 
 @author: karlen
 """
@@ -11,6 +11,7 @@ from ipywidgets import AppLayout
 
 from datetime import date
 import time
+import copy
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -39,7 +40,7 @@ def get_transitions_lists(self):
     return trans_list, trans_enabled
 
 def get_region_list(self):
-    region_list = ['None']
+    region_list = ['None', 'Simulation']
     region_selected = 'None'
     if self.data_description is not None:
         region_list += list(self.data_description['regional_data'].keys())
@@ -81,7 +82,7 @@ def get_tab(self):
 
         region = self.region_dropdown.value        
         region_data = None
-        if self.region_dropdown.value != 'None':
+        if self.region_dropdown.value != 'None' and self.region_dropdown.value != 'Simulation':
             region_data = self.data_description['regional_data'][region]
         
         for pop_name in self.model.populations:
@@ -98,9 +99,19 @@ def get_tab(self):
                             data = self.pd_dict[filename][header].values
                             td = range(len(data))
                             axis.scatter(td, data, color=pop.color)
+
+                if region == 'Simulation':
+                    if self.sim_model is not None:
+                        sim_pop = self.sim_model.populations[pop_name]
+                        if hasattr(sim_pop,'show_sim') and sim_pop.show_sim:
+                            st = range(len(sim_pop.history))
+                            axis.scatter(st, sim_pop.history, color=sim_pop.color)
+
         title = 'Totals'
         if region_data is not None:
             title += ' - ' + region
+        if region == 'Simulation':
+            title += ' - Simulation ('+str(self.seed_text_widget.value)+')' 
         axis.set_title(title)
         axis.legend()
         axis.set_yscale(y_axis_type)
@@ -116,7 +127,7 @@ def get_tab(self):
         
         region = self.region_dropdown.value        
         region_data = None
-        if self.region_dropdown.value != 'None':
+        if self.region_dropdown.value != 'None' and self.region_dropdown.value != 'Simulation':
             region_data = self.data_description['regional_data'][region]
         
         for pop_name in self.model.populations:
@@ -134,10 +145,20 @@ def get_tab(self):
                             data = self.pd_dict[filename][header].values
                             td = range(len(data))
                             axis.scatter(td, data, color=pop.color)
+
+                if region == 'Simulation':
+                    if self.sim_model is not None:
+                        sim_pop = self.sim_model.populations[pop_name]
+                        if hasattr(sim_pop,'show_sim') and sim_pop.show_sim:
+                            sim_daily = delta(sim_pop.history)
+                            st = range(len(sim_daily))
+                            axis.scatter(st, sim_daily.history, color=sim_pop.color)
         
         title = 'Daily'
         if region_data is not None:
             title += ' - ' + region
+        if region == 'Simulation':
+            title += ' - Simulation ('+str(self.seed_text_widget.value)+')' 
         axis.set_title(title)
         axis.legend()
         axis.set_yscale(y_axis_type)
@@ -148,9 +169,10 @@ def get_tab(self):
             axis.set_ylim(bottom=0)
         if (y_max > 0.):
             axis.set_ylim(top=y_max)
-    
+
+# the t0 information needs to be propagated correctly before enabling this widget:
     t0_widget = widgets.DatePicker(
-        description='t_0:', value = date(2020,3,1), tooltip='Defines day 0 on plots',)
+        description='t_0:', value = date(2020,3,1), tooltip='Defines day 0 on plots', disabled=True)
  
 # Look into this later:
 #    time_step_widget = widgets.BoundedFloatText(
@@ -348,12 +370,45 @@ def get_tab(self):
         
         region_selected = self.region_dropdown.value
         if self.data_description is not None:
-            self.data_description['selected_region'] = region_selected    
+            self.data_description['selected_region'] = region_selected
+        if region_selected == 'Simulation':
+            self.seed_text_widget.disabled = False
+            self.sim_model = copy.deepcopy(self.model)
+            seed = self.seed_text_widget.value
+            np.random.seed(seed)
+            self.sim_model.reset()
+            self.sim_model.generate_data(n_days_widget.value)
+        else:
+            self.seed_text_widget.disabled = True
         
         with output:
             print('Changed data region to: '+region_selected)
+            if region_selected == 'Simulation':
+                seed = self.seed_text_widget.value
+                print(' ')
+                print('Simulated sample created using seed:')
+                print(seed)
                 
     self.region_dropdown.observe(region_dropdown_eventhandler, names='value')
+    
+    self.seed_text_widget = widgets.IntText(value=12345, description='Seed:',
+                                            disabled=True,
+                                            tooltip='To produce a new simulated sample change this seed')
+    def seed_change_eventhandler(change):
+        output.clear_output(True)
+
+        seed = change['new']
+        np.random.seed(seed)
+        self.sim_model = copy.deepcopy(self.model)
+        self.sim_model.reset()
+        self.sim_model.generate_data(n_days_widget.value)
+        
+        with output:
+            # For some reason this does not show up in output!
+            print('Simulated sample created using seed:')
+            print(seed)
+
+    self.seed_text_widget.observe(seed_change_eventhandler, names='value')
 
     def save_model_file(b):
         output.clear_output(True)
@@ -463,7 +518,8 @@ def get_tab(self):
         
     left_box = widgets.VBox([t0_widget, n_days_widget, plot_1, plot_2, y_max_1, y_max_2])
     right_box = widgets.VBox([widgets.HBox([plot_button, reset_button]), 
-                              self.param_dropdown, self.val_text_widget, self.transitions_chooser, self.region_dropdown])
+                              self.param_dropdown, self.val_text_widget, self.transitions_chooser, 
+                              self.region_dropdown, self.seed_text_widget])
     
     return AppLayout(header=header_hbox,
               left_sidebar=left_box,
