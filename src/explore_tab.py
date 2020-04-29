@@ -389,6 +389,8 @@ def get_tab(self):
                 print('Simulated sample created using seed:')
                 print(seed)
                 
+        self.new_region_opened()
+                
     self.region_dropdown.observe(region_dropdown_eventhandler, names='value')
     
     self.seed_text_widget = widgets.IntText(value=12345, description='Seed:',

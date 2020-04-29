@@ -10,6 +10,7 @@ Testing ipython calls from Jupyter notebook
 
 import main_tab
 import explore_tab
+import analyze_tab
 import compare_tab
 
 class ipypm:
@@ -39,6 +40,7 @@ class ipypm:
         self.pop_dropdown = None
         self.date_range_text = None
         self.full_par_dropdown = None
+        self.full_pop_name = None
 
     def get_display(self):
         """ Returns widget that can be displayed in a Jupyter notebook cell
@@ -60,3 +62,6 @@ class ipypm:
     def new_data_opened(self):
         explore_tab.new_data_opened(self)
         compare_tab.new_data_opened(self)
+        
+    def new_region_opened(self):
+        analyze_tab.new_region_opened(self)
