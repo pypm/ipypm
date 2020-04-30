@@ -41,6 +41,8 @@ class ipypm:
         self.date_range_text = None
         self.full_par_dropdown = None
         self.full_pop_name = None
+        self.optimizer = None
+        self.chain = None
 
     def get_display(self):
         """ Returns widget that can be displayed in a Jupyter notebook cell

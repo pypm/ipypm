@@ -89,7 +89,7 @@ def get_tab(self):
             pop = self.model.populations[pop_name]
             if not pop.hidden:
                 t = range(len(pop.history))
-                axis.plot(t, pop.history, lw=2, label=pop_name, color=pop.color)
+                axis.plot(t, pop.history, lw=2, label=pop_name, color=pop.color, zorder=2)
                 
                 if region_data is not None:
                     if pop_name in region_data:
@@ -98,14 +98,14 @@ def get_tab(self):
                             header = region_data[pop_name]['total']['header']
                             data = self.pd_dict[filename][header].values
                             td = range(len(data))
-                            axis.scatter(td, data, color=pop.color)
+                            axis.scatter(td, data, color=pop.color, zorder=1)
 
                 if region == 'Simulation':
                     if self.sim_model is not None:
                         sim_pop = self.sim_model.populations[pop_name]
                         if hasattr(sim_pop,'show_sim') and sim_pop.show_sim:
                             st = range(len(sim_pop.history))
-                            axis.scatter(st, sim_pop.history, color=sim_pop.color)
+                            axis.scatter(st, sim_pop.history, color=sim_pop.color, zorder=1)
 
         title = 'Totals'
         if region_data is not None:
@@ -115,7 +115,7 @@ def get_tab(self):
         axis.set_title(title)
         axis.legend()
         axis.set_yscale(y_axis_type)
-        #axis.set_xlim(left=-1, right=n_days_widget.value)
+        axis.set_xlim(left=0, right=n_days_widget.value)
         if y_axis_type == 'log':
             axis.set_ylim(bottom=3)
         else:
@@ -135,7 +135,7 @@ def get_tab(self):
             if not pop.hidden and pop.monotonic:
                 daily = delta(pop.history)
                 t = range(len(daily))
-                axis.step(t, daily, lw=2, label=pop_name, color=pop.color)
+                axis.step(t, daily, lw=2, label=pop_name, color=pop.color, zorder=2)
                 
                 if region_data is not None:
                     if pop_name in region_data:
@@ -144,7 +144,7 @@ def get_tab(self):
                             header = region_data[pop_name]['daily']['header']
                             data = self.pd_dict[filename][header].values
                             td = range(len(data))
-                            axis.scatter(td, data, color=pop.color)
+                            axis.scatter(td, data, color=pop.color, zorder=1)
 
                 if region == 'Simulation':
                     if self.sim_model is not None:
@@ -152,7 +152,7 @@ def get_tab(self):
                         if hasattr(sim_pop,'show_sim') and sim_pop.show_sim:
                             sim_daily = delta(sim_pop.history)
                             st = range(len(sim_daily))
-                            axis.scatter(st, sim_daily.history, color=sim_pop.color)
+                            axis.scatter(st, sim_daily, color=sim_pop.color, zorder=1)
         
         title = 'Daily'
         if region_data is not None:
@@ -162,7 +162,7 @@ def get_tab(self):
         axis.set_title(title)
         axis.legend()
         axis.set_yscale(y_axis_type)
-        #axis.set_xlim(left=-1, right=n_days_widget.value)
+        axis.set_xlim(left=0, right=n_days_widget.value)
         if y_axis_type == 'log':
             axis.set_ylim(bottom=3)
         else:
@@ -212,7 +212,7 @@ def get_tab(self):
         output.clear_output(True)
         plot_output.clear_output(True)
         
-        self.model.parameters[self.param_dropdown.value].set_value(self.val_text_widget.value)
+        #self.model.parameters[self.param_dropdown.value].set_value(self.val_text_widget.value)
         #run model with current parameters
         before = time.process_time()
         self.model.reset()
@@ -277,13 +277,25 @@ def get_tab(self):
         x_transform = transforms.blended_transform_factory(axis.transData, axis.transAxes)
         trans_list, trans_enabled = get_transitions_lists(self)
         i = 0
+        last_mod = 0
+        n_mod = 0
         for tran_name in trans_enabled:
-            i+=1
-            x_text = 'X'+str(i)
-            tran = self.model.transitions[tran_name]           
-            x_props = dict(boxstyle='rarrow', facecolor='red', alpha=0.3)
-            axis.text(tran.trigger_step, -0.1, x_text , transform=x_transform, fontsize=10,
-                      verticalalignment='top', horizontalalignment='center', bbox=x_props)
+            tran = self.model.transitions[tran_name]
+            if hasattr(tran,'parameter_after'):
+                # a modifier changes a parameter - use a color band to distinguish regions
+                n_mod += 1
+                axis.axvspan(last_mod, tran.trigger_step, facecolor='papayawhip', 
+                             edgecolor='tan', alpha=0.2*(n_mod+1), zorder=0)
+                last_mod = tran.trigger_step
+            else:
+                # an injector adds population - use an arrow to show times (delayed by a week?)
+                i+=1
+                x_text = 'X'+str(i)
+                x_props = dict(boxstyle='rarrow', facecolor='red', alpha=0.3)
+                # a hack to put it in the right place (since a 1 week delay - need to get 7 from somewhere)
+                delay = 7./self.model.get_time_step()
+                axis.text(tran.trigger_step+delay, -0.1, x_text , transform=x_transform, fontsize=10,
+                          verticalalignment='top', horizontalalignment='center', bbox=x_props)
             
     def reset_parameters(b):
         output.clear_output(True)
@@ -312,7 +324,8 @@ def get_tab(self):
     #similar bug in the slide
     #val_slide = widgets.FloatSlider(min=par.get_min(), max=par.get_max(), value = par.get_value(),
     #        continuous_update=False, orientation='horizontal', readout=True, readout_format='.3f')
-    self.val_text_widget = widgets.FloatText(value = par.get_value(), description='Value:')
+    self.val_text_widget = widgets.FloatText(value = par.get_value(), description='Value:', 
+                                             continuous_update=False)
     #widgets.link((val_slide, 'value'), (val_text, 'value'))
     
     def dropdown_eventhandler(change):
@@ -324,7 +337,12 @@ def get_tab(self):
     
     def val_change_eventhandler(change):
         if self.param_dropdown.value in self.model.parameters:
-            self.model.parameters[self.param_dropdown.value].set_value(change['new'])        
+            par = self.model.parameters[self.param_dropdown.value]
+            if par.parameter_type == 'float':
+                par.set_value(change['new'])
+            else:
+                par.set_value(int(change['new']))
+                
             b=[]
             make_plot(b)
     
@@ -395,7 +413,8 @@ def get_tab(self):
     
     self.seed_text_widget = widgets.IntText(value=12345, description='Seed:',
                                             disabled=True,
-                                            tooltip='To produce a new simulated sample change this seed')
+                                            tooltip='To produce a new simulated sample change this seed',
+                                            continuous_update=False)
     def seed_change_eventhandler(change):
         output.clear_output(True)
 

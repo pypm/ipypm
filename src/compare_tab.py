@@ -246,10 +246,11 @@ def get_tab(self):
             self.last_plot.savefig(plot_filename)
             model_filename.value = ''         
 
-    header_html = widgets.HTML(
-        value="<h1><a href:='https://www.pypm.ca'>pyPM</a> compare</h1>",
-        placeholder='Some HTML',
-        description='')
+    header_html = widgets.VBox([
+        widgets.HTML(
+            value="<h1><a href:='https://www.pypm.ca'>pyPM</a></h1><p style='font-size: 26px;'>compare</p>",
+            placeholder='',
+            description='')])
     
     hspace = widgets.HTML(
         value="&nbsp;"*24,

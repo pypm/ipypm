@@ -24,6 +24,7 @@ import matplotlib.transforms as transforms
 import sys
 sys.path.insert(1, '/Users/karlen/pypm/src')
 from analysis.Optimizer import Optimizer
+import tools.table
 
 def get_par_list(self):
     # full names include '* ' if variable
@@ -228,11 +229,11 @@ def get_tab(self):
 
     variable_checkbox = widgets.Checkbox(value=False, description='variable', disabled=False)
     variable_bound_text = widgets.Text(value='-inf:inf', placeholder='bounds eg. 0.:5.',
-                                       description='Bounds:', disabled=True,continuous_update=False)
+                                       description='Bounds:', disabled=True, continuous_update=False)
 
     def get_bounds(parameter, bound_text):
         # decode the bound_text
-        bounds = [-np.inf, np.inf]
+        bounds = [parameter.get_min(), parameter.get_max()]
         if bound_text.find(':') > 0:
             bound_split = bound_text.split(':')
             if len(bound_split) == 2:
@@ -242,6 +243,15 @@ def get_tab(self):
                     bounds[0] = int(bounds[0])
                     bounds[1] = int(bounds[1])
         return bounds
+    
+    def get_bounds_text(parameter):
+        # turn the existing bounds into bound_text
+        if parameter.parameter_type == 'float':
+            bound_text = "{0:0.3f}:{1:0.3f}".format(parameter.get_min(), parameter.get_max())
+        elif parameter.parameter_type == 'int':
+            bound_text = str(int(parameter.get_min()))+':'+str(int(parameter.get_max()))
+        return bound_text
+        
 
     def variable_checkbox_eventhandler(change):
         # update the status of the model parameter - set bounds if appropriate
@@ -252,26 +262,10 @@ def get_tab(self):
         if variable_checkbox.value:
             if par.get_status() == 'fixed':
                 status_changed = True
+                par.set_variable(None, None)
                 variable_bound_text.disabled = False
-                bounds = []
-                # if uniform prior already set use that, otherwise set new bounds
-                if par.prior_function == 'uniform' and par.prior_parameters is not None and \
-                    'half_width' in par.prior_parameters:
-                    par.set_variable(None, None)
-                    mean = par.prior_parameters['mean']
-                    half_width = par.prior_parameters['half_width']
-                    bounds = [mean-half_width,mean+half_width]
-                else:
-                    bounds = get_bounds(par, variable_bound_text.value)
-                    mean = (bounds[0]+bounds[1])/2.
-                    half_width = bounds[1] - mean
-                    prior_parameters = {'mean':mean, 'half_width':half_width}
-                    par.set_variable('uniform', prior_parameters)
-    
-                with output:
-                    print('Parameter '+par_name+' now set to variable.')
-                    print('Bounds for variation:' +
-                          str(bounds[0]) + ':' + str(bounds[1]))
+                variable_bound_text.value = get_bounds_text(par)
+
         else:
             variable_bound_text.disabled = True
             if par.get_status() == 'variable':
@@ -302,15 +296,15 @@ def get_tab(self):
         if variable_checkbox.value:
 
             bounds = get_bounds(par, variable_bound_text.value)
-            mean = (bounds[0]+bounds[1])/2.
-            half_width = bounds[1] - mean
-            prior_parameters = {'mean':mean, 'half_width':half_width}
-            par.set_variable('uniform', prior_parameters)
+            par.set_min(bounds[0])
+            par.set_max(bounds[1])
 
             with output:
                 print('Parameter '+par_name)
-                print('Bounds for variation:' +
-                      str(bounds[0]) + ':' + str(bounds[1]))
+                print('Bounds for variation:' +get_bounds_text(par))
+                if par.parameter_type == 'int' and bounds[1]-bounds[0] > 10:
+                    print('*** WARNING *** Integers are scanned')
+                    print('*** REDUCE RANGE OF SCAN ***')
     variable_bound_text.observe(variable_bound_text_eventhandler, names='value')
 
     def par_dropdown_eventhandler(change):
@@ -324,10 +318,7 @@ def get_tab(self):
         if prefix == '* ':
             variable_checkbox.value = True
             variable_bound_text.disabled = False
-            mean = par.prior_parameters['mean']
-            half_width = par.prior_parameters['half_width']
-            bound_text = "{0:0.2f}:{1:0.2f}".format(mean-half_width, mean+half_width)
-            variable_bound_text.value = bound_text
+            variable_bound_text.value = get_bounds_text(par)
         else:
             variable_checkbox.value = False
             variable_bound_text.disabled = True
@@ -344,22 +335,70 @@ def get_tab(self):
         else:
             range_list[0] = 0
             range_list[1] = len(self.pop_data[self.full_pop_name]) - 1
-        my_opt = Optimizer(self.model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list)
-        popt, pcov = my_opt.fit()
-        make_plot(self,range_list)
-        # update the parameter value on the explore tab, so that when going to that page,
-        # the old parameter value won't be reloaded
-        par_name = self.param_dropdown.value
-        par = self.model.parameters[par_name]
-        self.val_text_widget.value = par.get_value()
+        # fit the parameters:
+        self.optimizer = Optimizer(self.model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list)
+        # The optimizer cannot scan over integer variable parameters
+        # Strip those out and do a scan over them to find the
+        # fit with the lowest chi^2:
+        scan_dict = self.optimizer.i_fit()
+        if scan_dict is not None:
+            output.clear_output(True)
+            # print result of scan:
+            with output:
+                print('Scan performed over integer')
+                print('variable:'+scan_dict['name'])
+                val_list = scan_dict['val_list']
+                chi2_list = scan_dict['chi2_list']
+                for i in range(len(val_list)):
+                    print(str(val_list[i])+': chi2='+str(chi2_list[i]))
+        else:
+            popt, pcov = self.optimizer.fit()
+            make_plot(self,range_list)
+            # update the parameter value on the explore tab, so that when going to that page,
+            # the old parameter value won't be reloaded
+            par_name = self.param_dropdown.value
+            par = self.model.parameters[par_name]
+            self.val_text_widget.value = par.get_value()
+        
+    def fix_all(b):
+        full_par_names = get_par_list(self)
+        changed_list = []
+        for full_par_name in full_par_names:
+            par_name = full_par_name[2:]
+            prefix = full_par_name[:2]
+            if prefix == '* ':
+                par = self.model.parameters[par_name]
+                par.set_fixed()
+                changed_list.append(par_name)
+        if len(changed_list) > 0:
+            output.clear_output(True)
+            # update the dropdown list
+            full_par_names = get_par_list(self)
+            self.full_par_dropdown.options = full_par_names
+            with output:
+                print('All variable parameters set to fixed:')
+                print('\n'.join(changed_list))
 
     fit_button = widgets.Button(
-        description='  Fit/plot', button_style='', tooltip='Perform fit and plot result', icon='check')
+        description='  Fit & plot', button_style='', tooltip='Perform fit and plot result', icon='check')
+    fix_button = widgets.Button(
+        description='  Fix all', button_style='', tooltip='Change all variable parameters to fixed', icon='warning')
     
     fit_button.on_click(do_fit)
+    fix_button.on_click(fix_all)
+    
+    def show_vars(b):
+        plot_output.clear_output(True)
+
+        with plot_output:
+            print(tools.table.variable_parameter_table(self.model, width=110))
+    
+    show_vars_button = widgets.Button(
+        description='  Show vars', button_style='', tooltip='Show a table of variable parameters', icon='')
+    show_vars_button.on_click(show_vars)
     
     hspace = widgets.HTML(
-        value="&nbsp;"*4,
+        value="&nbsp;"*24,
         placeholder='Some HTML',
         description='')
     
@@ -369,14 +408,14 @@ def get_tab(self):
             placeholder='',
             description='')])
 
-    header_hbox = widgets.HBox([header_html])
+    header_hbox = widgets.HBox([header_html, hspace, show_vars_button])
             
     left_box = widgets.VBox([self.pop_dropdown, 
                              self.date_range_text, 
                              self.full_par_dropdown, 
                              variable_checkbox,  
                              variable_bound_text,
-                             fit_button
+                             widgets.HBox([fit_button,fix_button])
                              ])
     
     return AppLayout(header=header_hbox,
