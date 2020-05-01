@@ -17,6 +17,7 @@ import time
 import copy
 
 import numpy as np
+from scipy import stats
 import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
 
@@ -54,6 +55,110 @@ def get_tab(self):
     
     output = widgets.Output()
     plot_output = widgets.Output()
+
+    def plot_total(self, models, axis, y_axis_type='linear'):
+
+        region = self.region_dropdown.value        
+        region_data = None
+        if self.region_dropdown.value != 'None' and self.region_dropdown.value != 'Simulation':
+            region_data = self.data_description['regional_data'][region]
+        
+        for pop_name in self.model.populations:
+            pop = self.model.populations[pop_name]
+            if not pop.hidden:
+                t = range(len(pop.history))
+                axis.plot(t, pop.history, lw=2, label=pop_name, color=pop.color, zorder=2)
+
+                x_ref = self.optimizer.data_range[1]
+                y_ref = pop.history[x_ref]
+
+                lower = []
+                upper = []
+                x_extend = range(x_ref,self.n_days_widget.value)
+                for x in x_extend:
+                    dy_ref = pop.history[x]-y_ref
+                    values = []
+                    for model in models:
+                        sim_pop = model.populations[pop_name]
+                        values.append(sim_pop.history[x]-sim_pop.history[x_ref]-dy_ref)
+                    lower.append(np.percentile(values,2.5))
+                    upper.append(np.percentile(values,97.5))
+                    
+                ref_hist = np.array(pop.history[x_ref:self.n_days_widget.value])
+                lower = np.array(lower)
+                upper = np.array(upper)
+                #symmetrize, since calculation with auto_covariance yields asymmetric solutions
+                # - but for a monotonic function there should be asymmetry!
+                #dy = np.maximum(np.abs(np.array(lower)), np.abs(np.array(upper)))
+                #axis.fill_between(x_extend, ref_hist-dy, ref_hist+dy, color=pop.color, zorder=0, alpha=0.3)
+                axis.fill_between(x_extend, ref_hist+lower, ref_hist+upper, color=pop.color, zorder=0, alpha=0.3)
+
+                if region_data is not None:
+                    if pop_name in region_data:
+                        if 'total' in region_data[pop_name]:
+                            filename = region_data[pop_name]['total']['filename']
+                            header = region_data[pop_name]['total']['header']
+                            data = self.pd_dict[filename][header].values
+                            td = range(len(data))
+                            axis.scatter(td, data, color=pop.color, zorder=1)
+
+                if region == 'Simulation':
+                    if self.sim_model is not None:
+                        sim_pop = self.sim_model.populations[pop_name]
+                        if hasattr(sim_pop,'show_sim') and sim_pop.show_sim:
+                            st = range(len(sim_pop.history))
+                            axis.scatter(st, sim_pop.history, color=sim_pop.color, zorder=1)
+
+        title = 'Totals'
+        if region_data is not None:
+            title += ' - ' + region
+        if region == 'Simulation':
+            title += ' - Simulation ('+str(self.seed_text_widget.value)+')' 
+        axis.set_title(title)
+        axis.legend()
+        axis.set_yscale(y_axis_type)
+        axis.set_xlim(left=0, right=self.n_days_widget.value)
+        if y_axis_type == 'log':
+            axis.set_ylim(bottom=3)
+        else:
+            axis.set_ylim(bottom=0)
+    
+    def make_plot(models):
+        output.clear_output(True)
+        plot_output.clear_output(True)
+        
+        self.model.reset()
+        self.model.evolve_expectations(self.n_days_widget.value)
+        
+        with plot_output:
+    
+            fig, axes = plt.subplots(1, 2, figsize=(16,7))
+
+            axis = axes[0]
+            y_axis_type = 'linear'
+            plot_total(self, models, axis, y_axis_type)
+
+            plot_improvements(axis)
+
+            axis = axes[1]
+            y_axis_type = 'log'
+            plot_total(self, models, axis, y_axis_type)
+
+            plot_improvements(axis)
+    
+            self.last_plot = plt.gcf()
+            plt.show()
+    
+    def plot_improvements(axis):
+
+        axis.set_xlabel('days since t0',
+                           horizontalalignment='right', position = (1.,-0.1))
+        axis.set_ylabel('Number of people')
+           
+        pypm_props = dict(boxstyle='round', facecolor='blue', alpha=0.1)
+        axis.text(0.01, 1.02, 'pyPM.ca', transform=axis.transAxes, fontsize=10,
+                     verticalalignment='bottom', bbox=pypm_props)
+
     
     variable_checkbox = widgets.Checkbox(value=False, description='variable', disabled=False)
     prior_par_text = widgets.Text(value='0,1', placeholder='prior parameters eg. 0.,1.',
@@ -190,7 +295,7 @@ def get_tab(self):
                 par.set_variable('uniform', prior_dict)
             else:
                 prior_dict = {'mean':par_vals[0], 'sigma':par_vals[1]}
-                par.set_variable('normal', prior_dict)
+                par.set_variable('norm', prior_dict)
 
     prior_par_text.observe(prior_par_text_eventhandler, names='value')
     
@@ -214,7 +319,7 @@ def get_tab(self):
             prior_par_text.disabled = False
             prior_par_text.value = get_par_vals_text(par)
             prior_function_dropdown.disabled = False
-            if par.prior_function is not None and par.prior_function == 'normal':
+            if par.prior_function is not None and par.prior_function == 'norm':
                 prior_function_dropdown.value = 'normal'
             else:
                 prior_function_dropdown.value = 'uniform'
@@ -275,10 +380,31 @@ def get_tab(self):
         n_mcmc = n_mcmc_widget.value
         self.chain = self.optimizer.mcmc(n_dof,n_mcmc)
         with output:
-            print('Simulated goodness of fit distribution calculated')
+            print('MCMC chain produced.')
             print('fraction accepted =',self.optimizer.accept_fraction)    
     
     mcmc_button.on_click(do_mcmc)
+
+    def do_mcmc_plot(b):
+        # draw 1/10 of the chain points at random
+        # and produce an ensemble of models
+        n_models = int(n_mcmc_widget.value/10)
+        n_days = self.n_days_widget.value
+        models = []
+        for i in range(n_models):
+            sim_model = copy.deepcopy(self.model)
+            ipnt = int(n_models*stats.uniform.rvs())
+            link = self.chain[ipnt]
+            for var_name in link:
+                par = sim_model.parameters[var_name]
+                par.set_value(link[var_name])
+            sim_model.reset()
+            sim_model.evolve_expectations(n_days)
+            models.append(sim_model)
+            
+        make_plot(models)    
+    
+    mcmc_plot_button.on_click(do_mcmc_plot)
         
     def fix_all(b):
         full_par_names = get_par_list(self)

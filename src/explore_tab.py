@@ -115,7 +115,7 @@ def get_tab(self):
         axis.set_title(title)
         axis.legend()
         axis.set_yscale(y_axis_type)
-        axis.set_xlim(left=0, right=n_days_widget.value)
+        axis.set_xlim(left=0, right=self.n_days_widget.value)
         if y_axis_type == 'log':
             axis.set_ylim(bottom=3)
         else:
@@ -162,7 +162,7 @@ def get_tab(self):
         axis.set_title(title)
         axis.legend()
         axis.set_yscale(y_axis_type)
-        axis.set_xlim(left=0, right=n_days_widget.value)
+        axis.set_xlim(left=0, right=self.n_days_widget.value)
         if y_axis_type == 'log':
             axis.set_ylim(bottom=3)
         else:
@@ -179,8 +179,8 @@ def get_tab(self):
 #        value=1., min=0.02, max=2.0, step=0.05, description='time_step:',
 #        tooltip='length of each step in the calculation: disabled for now', disabled=True)
     
-    n_days_widget = widgets.BoundedIntText(
-        value=60, min=10, max=300, step=1, description='n_days:',
+    self.n_days_widget = widgets.BoundedIntText(
+        value=70, min=10, max=300, step=1, description='n_days:',
         tooltip='number of days to model: sets the upper time range of plots')
     
     plot_1 = widgets.Dropdown(
@@ -216,7 +216,7 @@ def get_tab(self):
         #run model with current parameters
         before = time.process_time()
         self.model.reset()
-        self.model.evolve_expectations(n_days_widget.value)
+        self.model.evolve_expectations(self.n_days_widget.value)
         after = time.process_time()
         run_time = int(round((after-before)*1000.))
         with output:
@@ -395,7 +395,7 @@ def get_tab(self):
             seed = self.seed_text_widget.value
             np.random.seed(seed)
             self.sim_model.reset()
-            self.sim_model.generate_data(n_days_widget.value)
+            self.sim_model.generate_data(self.n_days_widget.value)
         else:
             self.seed_text_widget.disabled = True
         
@@ -422,7 +422,7 @@ def get_tab(self):
         np.random.seed(seed)
         self.sim_model = copy.deepcopy(self.model)
         self.sim_model.reset()
-        self.sim_model.generate_data(n_days_widget.value)
+        self.sim_model.generate_data(self.n_days_widget.value)
         
         with output:
             # For some reason this does not show up in output!
@@ -537,7 +537,7 @@ def get_tab(self):
     model_save_button.on_click(save_model_file)
     plot_save_button.on_click(save_plot_file)
         
-    left_box = widgets.VBox([t0_widget, n_days_widget, plot_1, plot_2, y_max_1, y_max_2])
+    left_box = widgets.VBox([t0_widget, self.n_days_widget, plot_1, plot_2, y_max_1, y_max_2])
     right_box = widgets.VBox([widgets.HBox([plot_button, reset_button]), 
                               self.param_dropdown, self.val_text_widget, self.transitions_chooser, 
                               self.region_dropdown, self.seed_text_widget])

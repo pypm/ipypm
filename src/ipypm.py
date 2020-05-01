@@ -36,6 +36,7 @@ class ipypm:
         self.param_dropdown = None
         self.val_text_widget = None
         self.seed_text_widget = None
+        self.n_days_widget = None
         self.pop_data = None
         self.pop_dropdown = None
         self.date_range_text = None
@@ -43,6 +44,8 @@ class ipypm:
         self.full_pop_name = None
         self.optimizer = None
         self.chain = None
+        self.edit_model = None
+        self.new_parameters = {}
 
     def get_display(self):
         """ Returns widget that can be displayed in a Jupyter notebook cell
