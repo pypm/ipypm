@@ -46,6 +46,10 @@ class ipypm:
         self.chain = None
         self.edit_model = None
         self.new_parameters = {}
+        self.delays = {}
+        self.new_delays = {}
+        self.delay_par_dict = {}
+        self.new_populations = {}
 
     def get_display(self):
         """ Returns widget that can be displayed in a Jupyter notebook cell

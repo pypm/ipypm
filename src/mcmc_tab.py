@@ -399,7 +399,8 @@ def get_tab(self):
                 par = sim_model.parameters[var_name]
                 par.set_value(link[var_name])
             sim_model.reset()
-            sim_model.evolve_expectations(n_days)
+            #sim_model.evolve_expectations(n_days)
+            sim_model.generate_data(n_days)
             models.append(sim_model)
             
         make_plot(models)    
