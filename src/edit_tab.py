@@ -49,16 +49,37 @@ def get_tab(self):
     
     return edit_tab
 
+def get_model_delays(self):
+    # return a dictionary of model delays indexed by delay_name
+    delays = {}
+    for key in self.edit_model.connectors:
+        con = self.edit_model.connectors[key]
+        if hasattr(con,'delay'):
+            if isinstance(con.delay, list):
+                for delay in con.delay:
+                    delays[str(delay)] = delay
+                    if type(con).__name__ == 'Chain':
+                        for chain_con in con.chain:
+                            delays[str(chain_con.delay)] = chain_con.delay
+            else:
+                delays[str(con.delay)] = con.delay
+                if type(con).__name__ == 'Chain':
+                    for chain_con in con.chain:
+                        delays[str(chain_con.delay)] = chain_con.delay
+    return delays
+
+
 def get_model_tab(self):
     
     output = widgets.Output()
-    model_upload = widgets.FileUpload(accept='.pypm',multiple=False)
+    model_upload = widgets.FileUpload(decription='Open model', accept='.pypm',
+                                      multiple=False)
 
     model_name = widgets.Text(description='Name:')
     model_description = widgets.Textarea(description='Description:')
     model_t0 = widgets.DatePicker(description='t_0:', value = date(2020,3,1), 
                                   tooltip='Defines day 0 on plots', disabled=True)
-    model_time_step = widgets.FloatText(description='time_step:', disabled=True,
+    model_time_step = widgets.FloatText(description='time_step:', value = 1., disabled=True,
                                         tooltip='Duration of one time step. Units: days')
 
     model_save = widgets.Button(description='Save changes', tooltip='Save changes to loaded model')
@@ -75,7 +96,11 @@ def get_model_tab(self):
         model_t0.value = self.edit_model.t0
         model_time_step.value = self.edit_model.get_time_step()
         with output:
-            print('Model loaded for editing.')
+            print('Model loaded for editing. It has:')
+            print(len(self.edit_model.populations), ' Populations')
+            print(len(self.edit_model.connectors), ' Connectors')
+            print(len(self.edit_model.parameters), ' Parameters')
+            print(len(self.edit_model.transitions), ' Transitions')
 
     model_upload.observe(model_upload_eventhandler, names='value')
 
@@ -84,7 +109,7 @@ def get_model_tab(self):
         self.edit_model.name = model_name.value
         self.edit_model.description = model_description.value
         self.edit_model.t0 = model_t0.value
-        self.edit_model.get_time_step(model_time_step.value)
+        self.edit_model.set_time_step(model_time_step.value)
         with output:
             print('Changes saved to model.')
             print('You must save model to disk to make this permanent.')
@@ -93,18 +118,36 @@ def get_model_tab(self):
 
     def model_new_handler(b):
         output.clear_output(True)
-        self.edit_model = Model(model_name.value)
-        self.edit_model.description = model_description.value
-        self.edit_model.t0 = model_t0.value
-        self.edit_model.get_time_step(model_time_step.value)
-        with output:
-            print('New model created.')
-            print('You must save model to disk to make this permanent.')
+        if model_name.value is None or len(model_name.value) == 0:
+            with output:
+                print('Model NOT created.')
+                print('You must provide a valid name.')
+        else:
+            self.edit_model = Model(model_name.value)
+            # clean away any work prior to starting with fresh model:
+            self.new_parameters = {}
+            self.delays = {}
+            self.new_delays = {}
+            self.new_populations = {}
+            self.new_propagators = {}
+            
+            if model_description.value is not None and \
+                len(model_description.value) > 0:
+                self.edit_model.description = model_description.value
+            if model_t0.value is not None:
+                self.edit_model.t0 = model_t0.value
+            if model_time_step.value is not None:
+                self.edit_model.set_time_step(model_time_step.value)
+            with output:
+                print('New model created.')
+                print('You must save model to disk to make this permanent.')
         
     model_new.on_click(model_new_handler)
     
+    open_label = widgets.Label(value='Open model:')
+    
     v_box1 = widgets.VBox([
-        model_upload,
+        widgets.HBox([open_label, model_upload]),
         model_name,
         model_description,
         model_t0,
@@ -285,49 +328,16 @@ def get_delays_tab(self):
     delay_new = widgets.Button(description='New delay', tooltip='Create new delay')
     delay_table = widgets.Button(description='Delay Table', tooltip='Show all delays in a table')
 
-    def include_delay_pars(delay, a_dict):
-        if delay.delay_type == 'norm':
-            a_dict[delay.delay_parameters['mean'].name] = delay.delay_parameters['mean']
-            a_dict[delay.delay_parameters['sigma'].name] = delay.delay_parameters['sigma']
-        elif delay.delay_type == 'uniform':
-            a_dict[delay.delay_parameters['mean'].name] = delay.delay_parameters['mean']
-            a_dict[delay.delay_parameters['half_width'].name] = delay.delay_parameters['half-width']
-        elif delay.delay_type == 'erlang':
-            a_dict[delay.delay_parameters['mean'].name] = delay.delay_parameters['mean']
-            a_dict[delay.delay_parameters['k'].name] = delay.delay_parameters['k']
-
-    def get_delay_list(self):
-        delay_par_dict = {}
-        for key in self.edit_model.connectors:
-            con = self.edit_model.connectors[key]
-            if hasattr(con,'delay'):
-                if isinstance(con.delay, list):
-                    for delay in con.delay:
-                        self.delays[str(delay)] = delay
-                        include_delay_pars(delay, delay_par_dict)
-                        if type(con).__name__ == 'Chain':
-                            for chain_con in con.chain:
-                                self.delays[str(chain_con.delay)] = chain_con.delay
-                                include_delay_pars(chain_con.delay, delay_par_dict)
-                else:
-                    self.delays[str(con.delay)] = con.delay
-                    include_delay_pars(con.delay, delay_par_dict)
-                    if type(con).__name__ == 'Chain':
-                        for chain_con in con.chain:
-                            self.delays[str(chain_con.delay)] = chain_con.delay
-                            include_delay_pars(chain_con.delay, delay_par_dict)
-        delay_list = list(self.delays.keys()) + list(self.new_delays.keys())
-        delay_list.sort()
-        return delay_list, delay_par_dict
-
     def refresh(b):
         if self.edit_model is not None:
-            delay_dropdown_options, self.delay_par_dict = get_delay_list(self)
+            self.delays = get_model_delays(self)
+            delay_name_list =  list(self.delays.keys()) + list(self.new_delays.keys())
+            delay_name_list.sort()
+            
+            delay_dropdown_options = delay_name_list
 
             par_name_list = list(self.edit_model.parameters.keys()) + \
-            list(self.new_parameters.keys()) + list(self.delay_par_dict.keys())
-            # remove duplicates
-            par_name_list = list(dict.fromkeys(par_name_list))
+                list(self.new_parameters.keys())
             par_name_list.sort()
 
             delay_par1.options = par_name_list
@@ -393,10 +403,10 @@ def get_delays_tab(self):
             delay_par1.description = ''
             delay_par2.description = ''
             delay_par1.disabled = True
-            delay_par1.disabled = True
+            delay_par2.disabled = True
         else:
             delay_par1.disabled = False
-            delay_par1.disabled = False
+            delay_par2.disabled = False
         
     delay_type.observe(type_dropdown_eventhandler, names='value')
 
@@ -434,6 +444,10 @@ def get_delays_tab(self):
                 delay = self.new_delays[delay_name]
             delay_dict = get_delay_dict()
             delay.setup_delay(delay_type.value, delay_dict)
+            # must update model lists in case new parameters now being used
+            self.edit_model.update_lists()
+            # update the delay distribution
+            delay.update()
     
             with output:
                 print('Changes saved to delay.')
@@ -556,10 +570,11 @@ def get_populations_tab(self):
         pop_hidden.value = pop.hidden
         pop_color.value = pop.color
         pop_show_sim.value = pop.show_sim
-        pop_report_noise.value = pop.report_noise
+        report_noise, report_noise_par = pop.get_report_noise()
+        pop_report_noise.value = report_noise
         if pop_report_noise.value:
             pop_report_noise_parameter.disabled = False
-            pop_report_noise_parameter.value = str(pop.report_noise_par)
+            pop_report_noise_parameter.value = str(report_noise_par)
         else:
             pop_report_noise_parameter.disabled = True
 
@@ -619,7 +634,6 @@ def get_populations_tab(self):
             pop.hidden = pop_hidden.value
             pop.color = pop_color.value
             pop.show_sim = pop_show_sim.value
-            pop.report_noise = pop_report_noise.value
             if pop_report_noise.value:
                 par_name = pop_report_noise_parameter.value
                 par = None
@@ -628,6 +642,12 @@ def get_populations_tab(self):
                 else:
                     par = self.new_parameters[par_name]
                 pop.report_noise_par = par
+                pop.set_report_noise(True, par)
+            else:
+                pop.set_report_noise(False, None)
+                
+            # must update model lists in case new parameters now being used
+            self.edit_model.update_lists()
 
             with output:
                 print('Changes saved to population.')
@@ -714,8 +734,10 @@ def get_connectors_tab(self):
 
     connectors_tab = widgets.Tab()
     adder_tab = get_adder_tab(self)
-    #parameters_tab = get_parameters_tab(self)
-    #delays_tab = get_delays_tab(self)
+    chain_tab = get_chain_tab(self)
+    multiplier_tab = get_multiplier_tab(self)
+    propagator_tab = get_propagator_tab(self)
+    splitter_tab = get_splitter_tab(self)
     #populations_tab = get_populations_tab(self)
     #connectors_tab = get_connectors_tab(self)
     
@@ -724,7 +746,7 @@ def get_connectors_tab(self):
     placeholder='Some HTML',
     description='')
 
-    connectors_tab.children = [adder_tab,hspace,hspace,hspace,hspace,hspace]
+    connectors_tab.children = [adder_tab,chain_tab,multiplier_tab,propagator_tab,splitter_tab,hspace]
     connectors_tab.set_title(0, 'Adder')
     connectors_tab.set_title(1, 'Chain')
     connectors_tab.set_title(2, 'Multiplier')
@@ -733,7 +755,7 @@ def get_connectors_tab(self):
     connectors_tab.set_title(5, 'Subtractor')
     
     table_output = widgets.Output()
-    con_table = widgets.Button(description='Conn Table', tooltip='Show all connectors in a table')
+    con_table = widgets.Button(description='Connector Table', tooltip='Show all connectors in a table')
     def con_table_handler(b):
         table_output.clear_output(True)
         with table_output:
@@ -758,7 +780,7 @@ def get_adder_tab(self):
     add_location = widgets.Dropdown(description='After:', disabled=False, 
                                          tooltip='Insert after this connector')
     add_save = widgets.Button(description='Save changes', tooltip='Save changes to loaded model')
-    add_new = widgets.Button(description='New adder', tooltip='Create new adder')
+    add_new = widgets.Button(description='Insert adder', tooltip='Create new adder and insert into model')
     add_delete = widgets.Button(description='Delete adder', tooltip='Remove from model',
                                 button_style='warning', icon='warning')
 
@@ -798,7 +820,9 @@ def get_adder_tab(self):
             print('Adder options loaded')
 
     add_dropdown.observe(dropdown_eventhandler, names='value')
-    
+
+    # This function should not be used: considered risky to allow to modify
+    # connectors - maintaining the list of parameters etc.    
     def add_save_handler(b):        
         output.clear_output(True)
         adder_name = add_dropdown.value
@@ -885,7 +909,7 @@ def get_adder_tab(self):
         adder_name = add_dropdown.value
         if add_name.value != adder_name:
             with output:
-                print('You change the name of an existing adder prior asking to remove it.')
+                print('You changed the name of an existing adder before asking to remove it.')
                 print('Restore the name before trying to remove it.')
         else:
             adder = self.edit_model.connectors[adder_name]
@@ -904,10 +928,904 @@ def get_adder_tab(self):
         add_name,
         add_from_population,
         add_to_population,
-        widgets.HBox([add_save, add_delete]),
-        widgets.HBox([add_location, add_new])
+        widgets.HBox([add_new, add_location]),
+        add_delete
         ])
     
+    hspace = widgets.HTML(
+        value="&nbsp;"*4,
+        placeholder='Some HTML',
+        description='')
+
+    return widgets.HBox([v_box1, hspace, output])
+
+def get_propagator_tab(self):
+        
+    output = widgets.Output()
+    
+    refresh_button = widgets.Button(description='Refresh', tooltip='Refresh dropdown menus')
+    prop_dropdown = widgets.Dropdown(description='Propagator:', disabled=False)
+    
+    prop_name_widget = widgets.Text(description='Name:')
+
+    prop_from_population = widgets.Dropdown(description='From pop:', disabled=False, 
+                                            tooltip='Add from population') 
+    prop_to_population = widgets.Dropdown(description='To pop:', disabled=False, 
+                                          tooltip='Add to population')
+    fraction_dropdown = widgets.Dropdown(description='Fraction:', disabled=False, 
+                                         tooltip='Fraction to be propagated')
+    delay_dropdown = widgets.Dropdown(description='Delay:', disabled=False, 
+                                      tooltip='Delay in propagation')
+    prop_location = widgets.Dropdown(description='After:', disabled=False, 
+                                     tooltip='Insert after this connector')
+
+    prop_new = widgets.Button(description='Insert new', tooltip='Create new propagator and insert into model')
+    prop_delete = widgets.Button(description='Delete', tooltip='Remove propagator from model',
+                                 button_style='warning', icon='warning')
+
+    def refresh(b):
+        # Remember that connector order is important - do not sort them!
+        if self.edit_model is not None:
+            
+            connector_name_list = ['AT TOP','DO NOT INSERT']
+            for con_name in self.edit_model.connector_list:
+                connector_name_list.append(con_name)
+            prop_location.options = connector_name_list
+
+            pop_name_list = list(self.edit_model.populations.keys()) + \
+                list(self.new_populations.keys())
+            pop_name_list.sort()
+            prop_from_population.options = pop_name_list
+            prop_to_population.options = pop_name_list
+            
+            par_name_list = list(self.edit_model.parameters.keys()) + \
+                list(self.new_parameters.keys())
+            par_name_list.sort()
+            fraction_dropdown.options = par_name_list
+            
+            self.delays = get_model_delays(self)
+            delay_name_list =  list(self.delays.keys()) + list(self.new_delays.keys())
+            delay_name_list.sort()
+            
+            delay_dropdown.options = delay_name_list
+            
+            prop_name_list = []
+            for con_name in self.edit_model.connector_list:
+                con = self.edit_model.connectors[con_name]
+                if isinstance(con,Propagator):
+                    prop_name_list.append(str(con))
+            prop_dropdown.options = prop_name_list
+
+    refresh_button.on_click(refresh)
+
+    def dropdown_eventhandler(change):
+        output.clear_output(True)
+        prop_name = prop_dropdown.value
+        prop = self.edit_model.connectors[prop_name]
+        prop_name_widget.value = prop.name
+        prop_from_population.value = str(prop.from_population)
+        prop_to_population.value = str(prop.to_population)
+        fraction_dropdown.value = str(prop.fraction)
+        delay_dropdown.value = str(prop.delay)
+
+        with output:
+            print('Propagator options loaded')
+
+    prop_dropdown.observe(dropdown_eventhandler, names='value')
+
+    def prop_new_handler(b):
+        output.clear_output(True)
+              
+        from_pop_name = prop_from_population.value
+        from_pop = None
+        if from_pop_name in self.edit_model.populations:
+            from_pop = self.edit_model.populations[from_pop_name]
+        else:
+            from_pop = self.new_populations[from_pop_name]
+
+        to_pop_name = prop_to_population.value
+        to_pop = None
+        if to_pop_name in self.edit_model.populations:
+            to_pop = self.edit_model.populations[to_pop_name]
+        else:
+            to_pop = self.new_populations[to_pop_name]
+            
+        fraction_name = fraction_dropdown.value
+        fraction = None
+        if fraction_name in self.edit_model.parameters:
+            fraction = self.edit_model.parameters[fraction_name]
+        else:
+            fraction = self.new_parameters[fraction_name]
+
+        self.delays = get_model_delays(self)
+        delay_name = delay_dropdown.value
+        delay = None
+        if delay_name in self.delays:
+            delay = self.delays[delay_name]
+        else:
+            delay = self.new_delays[delay_name]
+
+        propagator = Propagator(prop_name_widget.value, from_pop, to_pop, fraction, delay)
+        
+        loc_name = prop_location.value
+        loc_con = None
+        if loc_name == 'AT TOP':
+            top_con_name = self.edit_model.connector_list[0]
+            loc_con = self.edit_model.connectors[top_con_name]
+        elif loc_name =='DO NOT INSERT':
+            loc_con = None
+        else: 
+            loc_con = self.edit_model.connectors[loc_name]
+
+            
+        with output:
+            if propagator.name in self.edit_model.connectors:
+                print('Connector with this name already exists.')
+                print('Please change the name and try again.')
+                print('If you want to modify this connector,')
+                print('delete this one and add a new one with this name.')  
+            else:
+                print('New propagator created')
+                if loc_name == 'AT TOP':
+                    self.edit_model.add_connector(propagator, before_connector=loc_con)
+                    print('and added at the top.')
+                elif loc_name =='DO NOT INSERT':
+                    self.new_propagators[propagator.name] = propagator
+                    print('but not added to model.')
+                    print('You can include this propagator in a chain.')
+                else:
+                    self.edit_model.add_connector(propagator, after_connector=loc_con)
+                    print('and added after connector: '+loc_name)
+
+                print('You must save the model to disk')
+                print('to make this permanent.')
+
+    prop_new.on_click(prop_new_handler)
+    
+    def prop_delete_handler(b):
+        output.clear_output(True)
+        prop_name = prop_dropdown.value
+        if prop_name_widget.value != prop_name:
+            with output:
+                print('You changed the name of an existing propagator before asking to remove it.')
+                print('Restore the name before trying to remove it.')
+        else:
+            prop = self.edit_model.connectors[prop_name]
+        
+        self.edit_model.remove_connector(prop)
+        with output:
+            print('Propagator '+str(prop)+' removed from model.')
+            print('You must save the model to disk')
+            print('to make this permanent.')
+            
+    prop_delete.on_click(prop_delete_handler)
+ 
+    v_box1 = widgets.VBox([
+        refresh_button,
+        prop_dropdown, 
+        prop_name_widget,
+        prop_from_population,
+        prop_to_population,
+        fraction_dropdown,
+        delay_dropdown,
+        widgets.HBox([prop_new, prop_location]),
+        widgets.HBox([prop_delete])
+        ])
+        
+    hspace = widgets.HTML(
+        value="&nbsp;"*4,
+        placeholder='Some HTML',
+        description='')
+
+    return widgets.HBox([v_box1, hspace, output])
+
+def get_chain_tab(self):
+        
+    output = widgets.Output()
+    
+    refresh_button = widgets.Button(description='Refresh', tooltip='Refresh dropdown menus')
+    chain_dropdown = widgets.Dropdown(description='Chain:', disabled=False)
+    
+    chain_name_widget = widgets.Text(description='Name:')
+
+    chain_from_population = widgets.Dropdown(description='From pop:', disabled=False, 
+                                             tooltip='Add from population') 
+    chain_to_population = widgets.Dropdown(description='To pop:', disabled=False, 
+                                           tooltip='Add to population')
+    chain_list_text = widgets.Textarea(description='Prop list:', disabled=False,
+                                       tootip = 'ordered list of one-to-one norm propagators',
+                                       placeholder = 'ordered list of one-to-one norm propagators')
+    fraction_dropdown = widgets.Dropdown(description='Fraction:', disabled=False, 
+                                         tooltip='Fraction remaining to be propagated')
+    delay_dropdown = widgets.Dropdown(description='Delay:', disabled=False, 
+                                      tooltip='Delay in propagation of remainder')
+    chain_location = widgets.Dropdown(description='After:', disabled=False, 
+                                      tooltip='Insert after this connector')
+
+    chain_new = widgets.Button(description='Insert new', tooltip='Create new chain and insert into model')
+    chain_delete = widgets.Button(description='Delete', tooltip='Remove chain from model',
+                                 button_style='warning', icon='warning')
+
+    def refresh(b):
+        # Remember that connector order is important - do not sort them!
+        if self.edit_model is not None:
+            
+            connector_name_list = ['AT TOP']
+            for con_name in self.edit_model.connector_list:
+                connector_name_list.append(con_name)
+            chain_location.options = connector_name_list
+
+            pop_name_list = list(self.edit_model.populations.keys()) + \
+                list(self.new_populations.keys())
+            pop_name_list.sort()
+            chain_from_population.options = pop_name_list
+            chain_to_population.options = pop_name_list
+            
+            par_name_list = list(self.edit_model.parameters.keys()) + \
+                list(self.new_parameters.keys())
+            par_name_list.sort()
+            fraction_dropdown.options = par_name_list
+            
+            self.delays = get_model_delays(self)
+            delay_name_list =  list(self.delays.keys()) + list(self.new_delays.keys())
+            delay_name_list.sort()
+            
+            delay_dropdown.options = delay_name_list
+            
+            chain_name_list = []
+            for con_name in self.edit_model.connector_list:
+                con = self.edit_model.connectors[con_name]
+                if isinstance(con,Chain):
+                    chain_name_list.append(str(con))
+            chain_dropdown.options = chain_name_list
+
+    refresh_button.on_click(refresh)
+
+    def dropdown_eventhandler(change):
+        output.clear_output(True)
+        chain_name = chain_dropdown.value
+        chain = self.edit_model.connectors[chain_name]
+        chain_name_widget.value = chain.name
+        chain_from_population.value = str(chain.from_population)
+        chain_to_population.value = str(chain.to_population)
+        prop_name_list = []
+        for prop in chain.chain:
+            prop_name_list.append(str(prop))
+        chain_list_text.value = ','.join(prop_name_list)
+        fraction_dropdown.value = str(chain.fraction)
+        delay_dropdown.value = str(chain.delay)
+
+        with output:
+            print('Chain options loaded')
+
+    chain_dropdown.observe(dropdown_eventhandler, names='value')
+
+    def chain_new_handler(b):
+        output.clear_output(True)
+              
+        from_pop_name = chain_from_population.value
+        from_pop = None
+        if from_pop_name in self.edit_model.populations:
+            from_pop = self.edit_model.populations[from_pop_name]
+        else:
+            from_pop = self.new_populations[from_pop_name]
+
+        to_pop_name = chain_to_population.value
+        to_pop = None
+        if to_pop_name in self.edit_model.populations:
+            to_pop = self.edit_model.populations[to_pop_name]
+        else:
+            to_pop = self.new_populations[to_pop_name]
+
+        prop_list = []
+        prop_name_list = chain_list_text.value.split(',')
+        for prop_name in prop_name_list:
+            name = prop_name.strip()
+            if len(name) > 0:
+                prop = None
+                if name in self.edit_model.connectors:
+                    prop = self.edit_model.connectors[name]
+                elif name in self.new_propagators:
+                    prop = self.new_propatators[name]
+                else:
+                    raise ValueError('Cannot find propagator with name:'+name)
+                prop_list.append(prop)
+        if len(prop_list) == 0:
+            raise ValueError('List of propagators missing')
+
+        fraction_name = fraction_dropdown.value
+        fraction = None
+        if fraction_name in self.edit_model.parameters:
+            fraction = self.edit_model.parameters[fraction_name]
+        else:
+            fraction = self.new_parameters[fraction_name]
+
+        self.delays = get_model_delays(self)
+        delay_name = delay_dropdown.value
+        delay = None
+        if delay_name in self.delays:
+            delay = self.delays[delay_name]
+        else:
+            delay = self.new_delays[delay_name]
+
+        chain = Chain(chain_name_widget.value, from_pop, to_pop, prop_list, fraction,
+                      delay, self.edit_model)
+        
+        loc_name = chain_location.value
+        loc_con = None
+        if loc_name == 'AT TOP':
+            top_con_name = self.edit_model.connector_list[0]
+            loc_con = self.edit_model.connectors[top_con_name]
+        else: 
+            loc_con = self.edit_model.connectors[loc_name]
+
+        with output:
+            if chain.name in self.edit_model.connectors:
+                print('Connector with this name already exists.')
+                print('Please change the name and try again.')
+                print('If you want to modify this connector,')
+                print('delete this one and add a new one with this name.')  
+            else:
+                print('New chain created')
+                if loc_name == 'AT TOP':
+                    self.edit_model.add_connector(chain, before_connector=loc_con)
+                    print('and added at the top.')
+                else:
+                    self.edit_model.add_connector(chain, after_connector=loc_con)
+                    print('and added after connector: '+loc_name)
+
+                print('You must save the model to disk')
+                print('to make this permanent.')
+
+                match = False
+                for prop in prop_list:
+                    if prop in self.edit_model.connectors:
+                        match = True
+                if match:
+                    print()
+                    print('*** Warning: a propagator in the chain is also')
+                    print('used in the model itself. Double check! ***')
+
+    chain_new.on_click(chain_new_handler)
+    
+    def chain_delete_handler(b):
+        output.clear_output(True)
+        chain_name = chain_dropdown.value
+        if chain_name_widget.value != chain_name:
+            with output:
+                print('You changed the name of an existing chain before asking to remove it.')
+                print('Restore the name before trying to remove it.')
+        else:
+            chain = self.edit_model.connectors[chain_name]
+        
+        self.edit_model.remove_connector(chain)
+        with output:
+            print('Chain '+str(chain)+' removed from model.')
+            print('You must save the model to disk')
+            print('to make this permanent.')
+            
+    chain_delete.on_click(chain_delete_handler)
+ 
+    v_box1 = widgets.VBox([
+        refresh_button,
+        chain_dropdown, 
+        chain_name_widget,
+        chain_from_population,
+        chain_to_population,
+        chain_list_text,
+        fraction_dropdown,
+        delay_dropdown,
+        widgets.HBox([chain_new, chain_location]),
+        widgets.HBox([chain_delete])
+        ])
+        
+    hspace = widgets.HTML(
+        value="&nbsp;"*4,
+        placeholder='Some HTML',
+        description='')
+
+    return widgets.HBox([v_box1, hspace, output])
+
+
+def get_multiplier_tab(self):
+        
+    output = widgets.Output()
+    
+    refresh_button = widgets.Button(description='Refresh', tooltip='Refresh dropdown menus')
+    mult_dropdown = widgets.Dropdown(description='Multiplier:', disabled=False)
+    
+    mult_name_widget = widgets.Text(description='Name:')
+
+    mult_from_population0 = widgets.Dropdown(description='From pop1:', disabled=False, 
+                                             tooltip='Mult from population0')
+    mult_from_population1 = widgets.Dropdown(description='From pop2:', disabled=False, 
+                                             tooltip='Mult from population1')
+    mult_has_divider = widgets.Checkbox(description='Has divider', disabled=False,
+                                        tooltip='Include a divider')
+    mult_from_population2 = widgets.Dropdown(description='From pop3:', disabled=False, 
+                                             tooltip='Divider population') 
+    mult_to_population = widgets.Dropdown(description='To pop:', disabled=False, 
+                                          tooltip='Add to population')
+    scale_parameter_dropdown = widgets.Dropdown(description='Scale par:', disabled=False, 
+                                         tooltip='Scaling parameter')
+    delay_dropdown = widgets.Dropdown(description='Delay:', disabled=False, 
+                                      tooltip='Delay in propagation')
+    distribution_dropdown = widgets.Dropdown(description='Distribution:', disabled=False,
+                                             options=['poisson','nbinom'],
+                                             tooltip='Newly infected distribution')
+    nbinom_par_dropdown = widgets.Dropdown(description='nbinom p', disabled=True, 
+                                           tooltip='Negative binomial parameter p')    
+    mult_location = widgets.Dropdown(description='After:', disabled=False, 
+                                     tooltip='Insert after this connector')
+
+    mult_save = widgets.Button(description='Save', tooltip='Save changes to Multiplier')
+    mult_new = widgets.Button(description='Insert new', tooltip='Create new propagator and insert into model')
+    mult_delete = widgets.Button(description='Delete', tooltip='Remove multiplier from model',
+                                 button_style='warning', icon='warning')
+
+    def refresh(b):
+        # Remember that connector order is important - do not sort them!
+        if self.edit_model is not None:
+            
+            connector_name_list = ['AT TOP']
+            for con_name in self.edit_model.connector_list:
+                connector_name_list.append(con_name)
+            mult_location.options = connector_name_list
+
+            pop_name_list = list(self.edit_model.populations.keys()) + \
+                list(self.new_populations.keys())
+            pop_name_list.sort()
+            mult_from_population0.options = pop_name_list
+            mult_from_population1.options = pop_name_list
+            mult_from_population2.options = pop_name_list
+            mult_to_population.options = pop_name_list
+            
+            par_name_list = list(self.edit_model.parameters.keys()) + \
+                list(self.new_parameters.keys())
+            par_name_list.sort()
+            scale_parameter_dropdown.options = par_name_list
+            nbinom_par_dropdown.options = par_name_list
+            
+            self.delays = get_model_delays(self)
+            delay_name_list =  list(self.delays.keys()) + list(self.new_delays.keys())
+            delay_name_list.sort()
+            
+            delay_dropdown.options = delay_name_list
+            
+            mult_name_list = []
+            for con_name in self.edit_model.connector_list:
+                con = self.edit_model.connectors[con_name]
+                if isinstance(con,Multiplier):
+                    mult_name_list.append(str(con))
+            mult_dropdown.options = mult_name_list
+
+    refresh_button.on_click(refresh)
+
+    def dropdown_eventhandler(change):
+        output.clear_output(True)
+        mult_name = mult_dropdown.value
+        mult = self.edit_model.connectors[mult_name]
+        mult_name_widget.value = mult.name
+        from_populations = mult.from_population        
+        mult_from_population0.value = str(from_populations[0])
+        mult_from_population1.value = str(from_populations[1])
+        if len(from_populations) == 3:
+            mult_from_population2.value = str(from_populations[2])
+            mult_has_divider.value = True
+        mult_to_population.value = str(mult.to_population)
+        scale_parameter_dropdown.value = str(mult.scale_parameter)
+        delay_dropdown.value = str(mult.delay)
+        distribution, nbinom_par = mult.get_distribution()
+        distribution_dropdown.value = distribution
+        if distribution == 'nbinom':
+            nbinom_par_dropdown.value = nbinom_par
+            nbinom_par_dropdown.disabled = False
+        else:
+            nbinom_par_dropdown.disabled = True
+
+        with output:
+            print('Multiplier options loaded')
+
+    mult_dropdown.observe(dropdown_eventhandler, names='value')
+
+    def mult_has_divider_checkbox_eventhandler(change):
+        mult_from_population2.disabled = not mult_has_divider.value
+            
+    mult_has_divider.observe(mult_has_divider_checkbox_eventhandler, names='value')
+
+    def distribution_dropdown_eventhandler(change):
+        nbinom_par_dropdown.disabled = distribution_dropdown.value != 'nbinom'
+    
+    distribution_dropdown.observe(distribution_dropdown_eventhandler, names='value')
+
+    # allow the multiplier to be modified (changing the distribution)
+    def mult_save_handler(b):        
+        output.clear_output(True)
+        mult_name = mult_dropdown.value
+        if mult_name.value != mult_name:
+            with output:
+                print('You are not allowed to change the name of an existing multiplier.')
+                print('You click the "Insert new" button to create a new multiplier')
+                print('with this name.')
+        else:
+            mult = self.edit_model.connectors[mult_name]
+            from_pop_names = [mult_from_population0.value,mult_from_population1.value]
+            if mult_has_divider.value:
+                from_pop_names.append(mult_from_population2.value)
+            from_pops = []
+            for from_pop_name in from_pop_names:
+                from_pop = None
+                if from_pop_name in self.edit_model.populations:
+                    from_pop = self.edit_model.populations[from_pop_name]
+                else:
+                    from_pop = self.new_populations[from_pop_name]
+                from_pops.append(from_pop)
+            mult.from_population = from_pops
+
+            to_pop_name = mult_to_population.value
+            to_pop = None
+            if to_pop_name in self.edit_model.populations:
+                to_pop = self.edit_model.populations[to_pop_name]
+            else:
+                to_pop = self.new_populations[to_pop_name]
+            mult.to_population = to_pop
+
+            scale_parameter_name = scale_parameter_dropdown.value
+            scale_parameter = None
+            if scale_parameter_name in self.edit_model.parameters:
+                scale_parameter = self.edit_model.parameters[scale_parameter_name]
+            else:
+                scale_parameter = self.new_parameters[scale_parameter_name]
+            mult.scale_parameter =  scale_parameter
+            
+            self.delays = get_model_delays(self)
+            delay_name = delay_dropdown.value
+            delay = None
+            if delay_name in self.delays:
+                delay = self.delays[delay_name]
+            else:
+                delay = self.new_delays[delay_name]
+            mult.delay = delay
+
+            nbinom_par_name = nbinom_par_dropdown.value
+            nbinom_par = None
+            if distribution_dropdown.value == 'nbinom':
+                if nbinom_par_name in self.edit_model.parameters:
+                    nbinom_par = self.edit_model.parameters[nbinom_par_name]
+                else:
+                    nbinom_par = self.new_parameters[nbinom_par_name]
+            mult.set_distribution(distribution_dropdown.value, nbinom_par)
+
+            # after modifying a connector, it is necessary for the model to
+            # update its lists of populations etc.
+        
+            self.edit_model.update_lists()
+
+            with output:
+                print('Changes saved to multiplier.')
+                print('You must save model to disk to make this permanent.')
+
+    mult_save.on_click(mult_save_handler)    
+
+    def mult_new_handler(b):
+        output.clear_output(True)
+
+        from_pop_names = [mult_from_population0.value,mult_from_population1.value]
+        if mult_has_divider.value:
+            from_pop_names.append(mult_from_population2.value)
+        from_pops = []
+        for from_pop_name in from_pop_names:
+            from_pop = None
+            if from_pop_name in self.edit_model.populations:
+                from_pop = self.edit_model.populations[from_pop_name]
+            else:
+                from_pop = self.new_populations[from_pop_name]
+            from_pops.append(from_pop)
+
+        to_pop_name = mult_to_population.value
+        to_pop = None
+        if to_pop_name in self.edit_model.populations:
+            to_pop = self.edit_model.populations[to_pop_name]
+        else:
+            to_pop = self.new_populations[to_pop_name]
+            
+        scale_parameter_name = scale_parameter_dropdown.value
+        scale_parameter = None
+        if scale_parameter_name in self.edit_model.parameters:
+            scale_parameter = self.edit_model.parameters[scale_parameter_name]
+        else:
+            scale_parameter = self.new_parameters[scale_parameter_name]
+
+        self.delays = get_model_delays(self)
+        delay_name = delay_dropdown.value
+        delay = None
+        if delay_name in self.delays:
+            delay = self.delays[delay_name]
+        else:
+            delay = self.new_delays[delay_name]
+            
+        nbinom_par_name = nbinom_par_dropdown.value
+        nbinom_par = None
+        if distribution_dropdown.value == 'nbinom':
+            if nbinom_par_name in self.edit_model.parameters:
+                nbinom_par = self.edit_model.parameters[nbinom_par_name]
+            else:
+                nbinom_par = self.new_parameters[nbinom_par_name]
+
+        multiplier = Multiplier(mult_name_widget.value, from_pops, to_pop, scale_parameter, delay,
+                                self.edit_model, distribution=distribution_dropdown.value,
+                                nbinom_par=nbinom_par)
+
+        loc_name = mult_location.value
+        loc_con = None
+        if loc_name == 'AT TOP':
+            top_con_name = self.edit_model.connector_list[0]
+            loc_con = self.edit_model.connectors[top_con_name]
+        else: 
+            loc_con = self.edit_model.connectors[loc_name]
+
+            
+        with output:
+            if multiplier.name in self.edit_model.connectors:
+                print('Connector with this name already exists.')
+                print('Please change the name and try again.')
+  
+            else:
+                print('New multiplier created')
+                if loc_name == 'AT TOP':
+                    self.edit_model.add_connector(multiplier, before_connector=loc_con)
+                    print('and added at the top.')
+                else:
+                    self.edit_model.add_connector(multiplier, after_connector=loc_con)
+                    print('and added after connector: '+loc_name)
+
+                print('You must save the model to disk')
+                print('to make this permanent.')
+
+    mult_new.on_click(mult_new_handler)
+    
+    def mult_delete_handler(b):
+        output.clear_output(True)
+        mult_name = mult_dropdown.value
+        if mult_name_widget.value != mult_name:
+            with output:
+                print('You changed the name of an existing multiplier before asking to remove it.')
+                print('Restore the name before trying to remove it.')
+        else:
+            mult = self.edit_model.connectors[mult_name]
+        
+        self.edit_model.remove_connector(mult)
+        with output:
+            print('Multiplier '+str(mult)+' removed from model.')
+            print('You must save the model to disk')
+            print('to make this permanent.')
+            
+    mult_delete.on_click(mult_delete_handler)
+ 
+    v_box1 = widgets.VBox([
+        refresh_button,
+        mult_dropdown, 
+        mult_name_widget,
+        mult_from_population0,
+        mult_from_population1,
+        mult_has_divider,
+        mult_from_population2,
+        mult_to_population,
+        scale_parameter_dropdown,
+        delay_dropdown,
+        distribution_dropdown,
+        nbinom_par_dropdown,
+        widgets.HBox([mult_new, mult_location]),
+        widgets.HBox([mult_save, mult_delete])
+        ])
+        
+    hspace = widgets.HTML(
+        value="&nbsp;"*4,
+        placeholder='Some HTML',
+        description='')
+
+    return widgets.HBox([v_box1, hspace, output])
+
+
+
+    """
+    Splitter distributes its incoming population to other populations,
+    either in the next time step or distributed in time:
+        - connector_name: string, short descriptor
+        - from_population: Population object, source of population to be
+        propagated
+        - to_population: list of two or more Population objects,
+        the destination populations.
+        - fractions: list of Parameter object with expected
+        fraction of population to be propagated to the first to_population,
+        the second is the fraction of the remaining to go to the next to_population
+        and so on, with the remainder going to the other population
+        The fractions must be in the range (0.,1.)
+        - delay: Delay object or list of the Delay objects that define how
+        propagation is spread over time.
+
+
+    def __init__(self, connector_name, from_population, to_population,
+                 fractions, delay):
+        
+            """
+            
+def get_splitter_tab(self):
+        
+    output = widgets.Output()
+    
+    refresh_button = widgets.Button(description='Refresh', tooltip='Refresh dropdown menus')
+    splitter_dropdown = widgets.Dropdown(description='Splitter:', disabled=False)
+    
+    splitter_name_widget = widgets.Text(description='Name:')
+
+    splitter_from_population = widgets.Dropdown(description='From pop:', disabled=False, 
+                                             tooltip='Add from population') 
+    splitter_to_list_text = widgets.Textarea(description='To pops:', disabled=False,
+                                       tootip = 'commma separated list of populations',
+                                       placeholder = 'commma separated list of populations')
+    fractions_list_text = widgets.Textarea(description='Fractions:', disabled=False, 
+                                          tooltip= 'comma separated list of fraction parameters',
+                                          placeholder = 'comma separated list of fraction parameters')
+    delay_dropdown = widgets.Dropdown(description='Delay:', disabled=False, 
+                                      tooltip='Delay in propagation of remainder')
+    splitter_location = widgets.Dropdown(description='After:', disabled=False, 
+                                      tooltip='Insert after this connector')
+
+    splitter_new = widgets.Button(description='Insert new', tooltip='Create new splitter and insert into model')
+    splitter_delete = widgets.Button(description='Delete', tooltip='Remove splitter from model',
+                                 button_style='warning', icon='warning')
+
+    def refresh(b):
+        # Remember that connector order is important - do not sort them!
+        if self.edit_model is not None:
+            
+            connector_name_list = ['AT TOP']
+            for con_name in self.edit_model.connector_list:
+                connector_name_list.append(con_name)
+            splitter_location.options = connector_name_list
+
+            pop_name_list = list(self.edit_model.populations.keys()) + \
+                list(self.new_populations.keys())
+            pop_name_list.sort()
+            splitter_from_population.options = pop_name_list
+            
+            self.delays = get_model_delays(self)
+            delay_name_list =  list(self.delays.keys()) + list(self.new_delays.keys())
+            delay_name_list.sort()
+            
+            delay_dropdown.options = delay_name_list
+            
+            splitter_name_list = []
+            for con_name in self.edit_model.connector_list:
+                con = self.edit_model.connectors[con_name]
+                if isinstance(con,Splitter):
+                    splitter_name_list.append(str(con))
+            splitter_dropdown.options = splitter_name_list
+
+    refresh_button.on_click(refresh)
+
+    def dropdown_eventhandler(change):
+        output.clear_output(True)
+        splitter_name = splitter_dropdown.value
+        splitter = self.edit_model.connectors[splitter_name]
+        splitter_name_widget.value = splitter.name
+        splitter_from_population.value = str(splitter.from_population)
+        pop_name_list = []
+        for pop in splitter.to_population:
+            pop_name_list.append(str(pop))
+        splitter_to_list_text.value = ','.join(pop_name_list)
+        par_name_list = []
+        for par in splitter.fractions:
+            par_name_list.append(str(par))
+        fractions_list_text.value = ','.join(par_name_list)
+
+        delay_dropdown.value = str(splitter.delay)
+
+        with output:
+            print('Splitter options loaded')
+
+    splitter_dropdown.observe(dropdown_eventhandler, names='value')
+
+    def splitter_new_handler(b):
+        output.clear_output(True)
+              
+        from_pop_name = splitter_from_population.value
+        from_pop = None
+        if from_pop_name in self.edit_model.populations:
+            from_pop = self.edit_model.populations[from_pop_name]
+        else:
+            from_pop = self.new_populations[from_pop_name]
+
+        to_pops = []
+        to_pop_names = splitter_to_list_text.value.split(',')
+        for to_pop_name in to_pop_names:
+            to_pop = None
+            if to_pop_name in self.edit_model.populations:
+                to_pop = self.edit_model.populations[to_pop_name]
+            else:
+                to_pop = self.new_populations[to_pop_name]
+            to_pops.append(to_pop)
+
+        fractions = []
+        fraction_names = fractions_list_text.value.split(',')
+        for fraction_name in fraction_names:
+            fraction = None
+            if fraction_name in self.edit_model.parameters:
+                fraction = self.edit_model.parameters[fraction_name]
+            else:
+                fraction = self.new_parameters[fraction_name]
+            fractions.append(fraction)
+
+        self.delays = get_model_delays(self)
+        delay_name = delay_dropdown.value
+        delay = None
+        if delay_name in self.delays:
+            delay = self.delays[delay_name]
+        else:
+            delay = self.new_delays[delay_name]
+
+        splitter = Splitter(splitter_name_widget.value, from_pop, to_pops, fractions,
+                      delay)
+                
+        loc_name = splitter_location.value
+        loc_con = None
+        if loc_name == 'AT TOP':
+            top_con_name = self.edit_model.connector_list[0]
+            loc_con = self.edit_model.connectors[top_con_name]
+        else: 
+            loc_con = self.edit_model.connectors[loc_name]
+
+        with output:
+            if splitter.name in self.edit_model.connectors:
+                print('Connector with this name already exists.')
+                print('Please change the name and try again.')
+                print('If you want to modify this connector,')
+                print('delete this one and add a new one with this name.')  
+            else:
+                print('New splitter created')
+                if loc_name == 'AT TOP':
+                    self.edit_model.add_connector(splitter, before_connector=loc_con)
+                    print('and added at the top.')
+                else:
+                    self.edit_model.add_connector(splitter, after_connector=loc_con)
+                    print('and added after connector: '+loc_name)
+
+                print('You must save the model to disk')
+                print('to make this permanent.')
+
+    splitter_new.on_click(splitter_new_handler)
+    
+    def splitter_delete_handler(b):
+        output.clear_output(True)
+        splitter_name = splitter_dropdown.value
+        if splitter_name_widget.value != splitter_name:
+            with output:
+                print('You changed the name of an existing splitter before asking to remove it.')
+                print('Restore the name before trying to remove it.')
+        else:
+            splitter = self.edit_model.connectors[splitter_name]
+        
+        self.edit_model.remove_connector(splitter)
+        with output:
+            print('Splitter '+str(splitter)+' removed from model.')
+            print('You must save the model to disk')
+            print('to make this permanent.')
+            
+    splitter_delete.on_click(splitter_delete_handler)
+ 
+    v_box1 = widgets.VBox([
+        refresh_button,
+        splitter_dropdown, 
+        splitter_name_widget,
+        splitter_from_population,
+        splitter_to_list_text,
+        fractions_list_text,
+        delay_dropdown,
+        widgets.HBox([splitter_new, splitter_location]),
+        widgets.HBox([splitter_delete])
+        ])
+        
     hspace = widgets.HTML(
         value="&nbsp;"*4,
         placeholder='Some HTML',

@@ -48,8 +48,8 @@ class ipypm:
         self.new_parameters = {}
         self.delays = {}
         self.new_delays = {}
-        self.delay_par_dict = {}
         self.new_populations = {}
+        self.new_propagators = {}
 
     def get_display(self):
         """ Returns widget that can be displayed in a Jupyter notebook cell
