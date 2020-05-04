@@ -238,11 +238,13 @@ def get_tab(self):
     def save_plot_file(b):
         mfn = model_filename.value
         if len(mfn) > 0:
-            plot_filename = self.model_folder_text_widget.value+'/'+mfn
+            #plot_filename = self.model_folder_text_widget.value+'/'+mfn
+            plot_filename = mfn
             mfolder = model_folder.value
             if mfolder not in ['','.']:
-                plot_filename = self.model_folder_text_widget.value+\
-                    '/'+mfolder+'/'+mfn
+                #plot_filename = self.model_folder_text_widget.value+\
+                #    '/'+mfolder+'/'+mfn
+                plot_filename = mfolder+'/'+mfn
             self.last_plot.savefig(plot_filename)
             model_filename.value = ''         
 

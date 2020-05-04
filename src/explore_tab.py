@@ -17,8 +17,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
 
-import pickle
-
 def get_par_list(self):
     pars = []
     for par_name in self.model.parameters:
@@ -56,6 +54,7 @@ def new_data_opened(self):
     self.region_dropdown.disabled = False
 
 def new_model_opened(self):
+    # this method no longer called... remove?
     # update the text widgets to show the current model
     self.model_name.value = self.model.name
     self.model_description.value = self.model.description
@@ -437,11 +436,13 @@ def get_tab(self):
         if len(mfn) > 0:
             if '.pypm' not in mfn:
                 mfn = mfn + '.pypm'
-            filename = self.model_folder_text_widget.value+'/'+mfn
+            #filename = self.model_folder_text_widget.value+'/'+mfn
+            filename = mfn
             mfolder = model_folder.value
             if mfolder not in ['','.']:
-                filename = self.model_folder_text_widget.value+\
-                    '/'+mfolder+'/'+mfn
+            #    filename = self.model_folder_text_widget.value+\
+            #        '/'+mfolder+'/'+mfn
+                filename = mfolder+'/'+mfn
             self.model.name = self.model_name.value
             self.model.description = self.model_description.value
             self.model.save_file(filename)
@@ -450,7 +451,7 @@ def get_tab(self):
                 print('Success. Model saved to:')
                 print(filename)
                 model_filename.value=''
-            
+
         else:
             with output:
                 print(' Model not saved: Missing filename.')
@@ -461,11 +462,13 @@ def get_tab(self):
         with output:
             mfn = model_filename.value
             if len(mfn) > 0:
-                plot_filename = self.model_folder_text_widget.value+'/'+mfn
+                #plot_filename = self.model_folder_text_widget.value+'/'+mfn
+                plot_filename = mfn
                 mfolder = model_folder.value
                 if mfolder not in ['','.']:
-                    plot_filename = self.model_folder_text_widget.value+\
-                        '/'+mfolder+'/'+mfn
+                    #plot_filename = self.model_folder_text_widget.value+\
+                    #    '/'+mfolder+'/'+mfn
+                    plot_filename = mfolder+'/'+mfn
                 self.last_plot.savefig(plot_filename)
                 print('The plot was saved to:')
                 print(plot_filename)
@@ -478,16 +481,6 @@ def get_tab(self):
         value="&nbsp;"*4,
         placeholder='Some HTML',
         description='')
-    
-    self.model_name = widgets.Text(
-        value=self.model.name,
-        tooltip='Short name indicating region and version number',
-        description='Model name:')
-    
-    self.model_description = widgets.Textarea(
-        value='Hello World - replace by model description',
-        tooltip='Describe key aspects of this model for future reference',
-        description='Description:')
     
     model_id = widgets.VBox([self.model_name, self.model_description])
     
@@ -521,8 +514,8 @@ def get_tab(self):
     def model_upload_eventhandler(change):    
         filename = list(model_upload.value.keys())[0]
         my_pickle = model_upload.value[filename]['content']
-        self.model = pickle.loads(my_pickle)
-        self.new_model_opened()
+        self.open_model(filename, my_pickle)
+
     model_upload.observe(model_upload_eventhandler, names='value')
 
     header_html = widgets.VBox([

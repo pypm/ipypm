@@ -10,16 +10,11 @@ It consists of two tabs: Model and Data
 from __future__ import print_function
 import ipywidgets as widgets
 
-from IPython.display import display
+from datetime import date
 
 import os
 import sys
 import pandas as pd
-
-# TEMPORARY HACK - PROPER DISTRIBUTION REQUIRED
-sys.path.insert(1, '/Users/karlen/pypm/src')
-from Model import Model
-
 
 def get_tab(self):
 
@@ -34,116 +29,45 @@ def get_tab(self):
     return open_tab
 
 def get_model_tab(self):
-        
-    return get_open_save_widget(self)
+
+    self.open_output = widgets.Output()
+    model_upload = widgets.FileUpload(decription='Open model', accept='.pypm',
+                                      multiple=False)
+
+    self.model_name = widgets.Text(description='Name:')
+    self.model_description = widgets.Textarea(description='Description:')
+    self.model_t0 = widgets.DatePicker(description='t_0:', value = date(2020,3,1), 
+                                  tooltip='Defines day 0 on plots', disabled=True)
+    self.model_time_step = widgets.FloatText(description='time_step:', value = 1., disabled=True,
+                                        tooltip='Duration of one time step. Units: days')
+
+    def model_upload_eventhandler(change):
+        filename = list(model_upload.value.keys())[0]
+        my_pickle = model_upload.value[filename]['content']
+        self.open_model(filename, my_pickle)
+
+    model_upload.observe(model_upload_eventhandler, names='value')
+
+    open_label = widgets.Label(value='Open model for data analysis:')
     
+    v_box1 = widgets.VBox([
+        widgets.HBox([open_label, model_upload]),
+        self.model_name,
+        self.model_description,
+        self.model_t0,
+        self.model_time_step
+        ])
+
+    hspace = widgets.HTML(
+        value="&nbsp;"*4,
+        placeholder='Some HTML',
+        description='')
+    
+    return widgets.HBox([v_box1, hspace, self.open_output])  
+
 def get_data_tab(self):
     
     return get_data_folder_select(self)
-
-def get_open_save_widget(self):
-  
-    self.model_folder_text_widget = widgets.Text(
-        value='/Users/karlen/pypm/src/test',
-        placeholder='Enter folder name',
-        description='Folder:',
-        disabled=False, continuous_update=False)
-    
-    file_list = os.listdir(self.model_folder_text_widget.value)
-    pypm_list = []
-    for fname in file_list:
-        if '.pypm' in fname:
-            pypm_list.append(fname)
-
-    filename_dropdown = widgets.Dropdown(
-        options=pypm_list,
-        description='File:',
-        disabled=False)
-
-    output_filename_text = widgets.Text(
-        value='',
-        placeholder='Enter file name',
-        description='Filename:',
-        disabled=False)
-
-    output_model_name_text = widgets.Text(
-        value='',
-        placeholder='Enter model name',
-        description='Model name:',
-        disabled=False)
-
-    open_button = widgets.Button(
-        description='  Open',
-        disabled=False,
-        button_style='', # 'success', 'info', 'warning', 'danger' or ''
-        tooltip='Open pypm model file: filetype is .pypm',
-        icon='file')
-
-    save_button = widgets.Button(
-        description='  Save',
-        disabled=False,
-        button_style='', # 'success', 'info', 'warning', 'danger' or ''
-        tooltip='Save pypm model to a .pypm file',
-        icon='file')
-
-    output = widgets.Output()
-    output2 = widgets.Output()
-
-    def open_file(b):
-        no_model = self.model is None
-        output.clear_output(True)
-        output2.clear_output()
-        filename = self.model_folder_text_widget.value+'/'+filename_dropdown.value
-        self.model = Model.open_file(filename)
-        with output:
-            print('Success. Model name = ' + self.model.name)
-        # if this is first model to be read, create the other tabs
-        if no_model:
-            self.all_tabs()
-        self.new_model_opened()
-        
-    def save_file(b):
-        output.clear_output()
-        output2.clear_output(True)
-        ofn = output_filename_text.value
-        if '.pypm' not in ofn:
-            ofn = ofn+'.pypm'
-        filename = self.model_folder_text_widget.value+'/'+ofn
-        self.model.name = output_model_name_text.value
-        self.model.save_file(filename)
-        # update dropdown so that the new file is included
-        file_list = os.listdir(self.model_folder_text_widget.value)
-        pypm_list = []
-        for fname in file_list:
-            if '.pypm' in fname:
-                pypm_list.append(fname)
-        filename_dropdown.options = pypm_list
-    
-        with output2:
-            print('Success. Model saved')
-        
-
-    def folder_eventhandler(change):
-        file_list = os.listdir(change['new'])
-        pypm_list = []
-        for fname in file_list:
-            if '.pypm' in fname:
-                pypm_list.append(fname)
-        filename_dropdown.options = pypm_list
-
-    self.model_folder_text_widget.observe(folder_eventhandler, names='value')
-    open_button.on_click(open_file)
-
-    v_box1 = widgets.VBox([self.model_folder_text_widget, filename_dropdown, open_button, output])
-
-    save_button.on_click(save_file)
-
-    v_box2 = widgets.VBox([output_filename_text, output_model_name_text, save_button, output2])
-
-    items = [v_box1, v_box2]
-    grid_box = widgets.GridBox(items, layout=widgets.Layout(grid_template_columns="repeat(2, 400px)"))
-
-    return grid_box
 
 def get_data_folder_select(self):
 

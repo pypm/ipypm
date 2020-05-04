@@ -12,8 +12,6 @@ from __future__ import print_function
 import ipywidgets as widgets
 from ipywidgets import AppLayout
 
-from datetime import date
-import time
 import copy
 
 import numpy as np
