@@ -933,7 +933,7 @@ def get_modifier_tab(self):
     mod_enabled = widgets.Checkbox(description='Enabled', disabled=False,
                                             tooltip='Set default: enabled')
 
-    mod_new = widgets.Button(description='New injector', tooltip='Create new propagator and insert into model')
+    mod_new = widgets.Button(description='New modifier', tooltip='Create new modifier and add into model')
     mod_delete = widgets.Button(description='Delete', tooltip='Remove multiplier from model',
                                  button_style='warning', icon='warning')
     mod_table = widgets.Button(description='Modifier Table', tooltip='Show all modifiers in a table')

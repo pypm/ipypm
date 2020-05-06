@@ -196,7 +196,7 @@ def get_tab(self):
                     
                     sim_model = None
                     if region == 'Simulation':
-                        sim_model = copy.deepcopy(self.model)
+                        sim_model = copy.deepcopy(model)
                         sim_model.reset()
                         sim_model.generate_data(n_days_widget.value)
 

@@ -322,7 +322,7 @@ def get_tab(self):
             else:
                 prior_function_dropdown.value = 'uniform'
             mcmc_step_widget.disabled = False
-            if par.mcmc_step is not None:
+            if hasattr(par,'mcmc_step') and par.mcmc_step is not None:
                 mcmc_step_widget.value = par.mcmc_step
         else:
             variable_checkbox.value = False
