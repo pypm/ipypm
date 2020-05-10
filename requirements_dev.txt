@@ -1,0 +1,6 @@
+pypm
+scipy
+numpy
+texttable
+pytest
+pytest-runner
