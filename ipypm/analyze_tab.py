@@ -16,11 +16,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
 
-# TEMPORARY HACK - PROPER DISTRIBUTION REQUIRED
-import sys
-sys.path.insert(1, '/Users/karlen/pypm/src')
-from analysis.Optimizer import Optimizer
-import tools.table
+from pypm.analysis.Optimizer import Optimizer
+from pypm.tools import table
 
 def get_par_list(self):
     # full names include '* ' if variable

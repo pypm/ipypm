@@ -9,14 +9,9 @@ from ipywidgets import interact, interactive, fixed, interact_manual
 import ipywidgets as widgets
 
 import matplotlib.pyplot as plt
-import numpy as np
 
-import sys
-sys.path.insert(1, '/Users/karlen/pypm/src')
-from Model import Model
-
-import main_tab
-import open_tab
+from pypm import Model
+from ipypm import main_tab, open_tab
 
 class ipypm_test:
     
