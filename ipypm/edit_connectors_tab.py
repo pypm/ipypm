@@ -8,17 +8,9 @@ Tabs for editing connectors
 from __future__ import print_function
 import ipywidgets as widgets
 
-# TEMPORARY HACK - PROPER DISTRIBUTION REQUIRED
-import sys
-sys.path.insert(1, '/Users/karlen/pypm/src')
-from Multiplier import Multiplier
-from Propagator import Propagator
-from Splitter import Splitter
-from Adder import Adder
-from Subtractor import Subtractor
-from Chain import Chain
-import tools.table
-
+from pypm import Model, Population, Delay, Parameter, Multiplier, Propagator, \
+    Splitter, Adder, Subtractor, Chain, Modifier, Injector
+from pypm.tools import table
 
 def get_conn_tab(self):
 

@@ -10,10 +10,8 @@ Testing ipython calls from Jupyter notebook
 
 import pickle
 
-import main_tab
-import explore_tab
-import analyze_tab
-import compare_tab
+from ipypm import analyze_tab, compare_tab, explore_tab, main_tab
+
 
 class ipypm:
     """ GUI for pyPM engine based on ipywidgets for use with Jupyter notebook

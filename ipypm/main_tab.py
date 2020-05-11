@@ -8,13 +8,8 @@ Main tab
 from __future__ import print_function
 import ipywidgets as widgets
 
-import open_tab
-import settings_tab
-import explore_tab
-import analyze_tab
-import mcmc_tab
-import compare_tab
-import edit_tab
+from ipypm import open_tab, settings_tab, explore_tab, analyze_tab, mcmc_tab, \
+    compare_tab, edit_tab
 
 def init_tab(self):
 

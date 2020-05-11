@@ -1,0 +1,4 @@
+pypm
+scipy
+numpy
+texttable

@@ -11,17 +11,11 @@ import ipywidgets as widgets
 from datetime import date
 import pickle
 
-# TEMPORARY HACK - PROPER DISTRIBUTION REQUIRED
-import sys
-sys.path.insert(1, '/Users/karlen/pypm/src')
-from Population import Population
-from Model import Model
-from Delay import Delay
-from Parameter import Parameter
-from Injector import Injector
-from Modifier import Modifier
-import tools.table
-import edit_connectors_tab
+from pypm import Model, Population, Delay, Parameter, Multiplier, Propagator, \
+    Splitter, Adder, Subtractor, Chain, Modifier, Injector
+from pypm.tools import table
+
+from ipypm import edit_connectors_tab
 
 def get_tab(self):
 
