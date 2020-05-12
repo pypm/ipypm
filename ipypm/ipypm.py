@@ -9,6 +9,8 @@ Testing ipython calls from Jupyter notebook
 #sys.path.insert(1, '/Users/karlen/pypm/src')
 
 import pickle
+import ipywidgets as widgets
+from datetime import date
 
 from ipypm import analyze_tab, compare_tab, explore_tab, main_tab
 
@@ -32,11 +34,6 @@ class ipypm:
         self.transitions_chooser = None
         self.region_dropdown = None
         self.region_dropdowns = []
-        self.model_name = None
-        self.model_description = None
-        self.model_t0 = None
-        self.model_time_step = None
-        self.open_output = None
         self.param_dropdown = None
         self.val_text_widget = None
         self.seed_text_widget = None
@@ -54,6 +51,19 @@ class ipypm:
         self.new_delays = {}
         self.new_populations = {}
         self.new_propagators = {}
+        self.region_model_folders = None
+        self.model_filenames = None
+        self.region_data_folders = None
+
+        self.model_name = widgets.Text(description='Name:')
+        self.model_description = widgets.Textarea(description='Description:')
+        self.model_t0 = widgets.DatePicker(description='t_0:', value=date(2020, 3, 1),
+                                           tooltip='Defines day 0 on plots', disabled=True)
+        self.model_time_step = widgets.FloatText(description='time_step:', value=1., disabled=True,
+                                                 tooltip='Duration of one time step. Units: days')
+        self.open_model_output = widgets.Output(layout={'width': '60%'})
+        self.open_data_output = widgets.Output()
+        self.region_data_output = widgets.Output(layout={'width': '60%'})
 
     def get_display(self):
         """ Returns widget that can be displayed in a Jupyter notebook cell
@@ -101,7 +111,7 @@ class ipypm:
         return delays
     
     def open_model(self, filename, my_pickle):
-        self.open_output.clear_output(True)
+        self.open_model_output.clear_output(True)
         self.model = pickle.loads(my_pickle)
         self.model_name.value = self.model.name
         self.model_description.value = self.model.description
@@ -109,7 +119,7 @@ class ipypm:
         self.model_time_step.value = self.model.get_time_step()
 
         self.all_tabs()
-        with self.open_output:
+        with self.open_model_output:
             print('Filename: '+filename)
             print('Model loaded for data analysis. It has:')
             print(len(self.model.populations), ' Populations')
