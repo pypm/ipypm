@@ -7,17 +7,15 @@ Use MCMC to define range of possible values for future predictions
 @author: karlen
 """
 
-
 from __future__ import print_function
 import ipywidgets as widgets
 from ipywidgets import AppLayout
 
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.transforms as transforms
 
-from pypm.analysis.Optimizer import Optimizer
-from pypm.tools import table
+from pypmca.analysis.Optimizer import Optimizer
+
 
 def get_par_list(self):
     # full names include '* ' if variable
@@ -28,38 +26,40 @@ def get_par_list(self):
         if not par.hidden:
             if par.get_status() == 'variable':
                 prefix = '* '
-                full_par_names_variable.append(prefix+par_name)
+                full_par_names_variable.append(prefix + par_name)
             else:
-                prefix = '  '                
-                full_par_names_fixed.append(prefix+par_name)
+                prefix = '  '
+                full_par_names_fixed.append(prefix + par_name)
     full_par_names_fixed.sort()
     full_par_names_variable.sort()
-    
-    return full_par_names_variable+full_par_names_fixed
+
+    return full_par_names_variable + full_par_names_fixed
+
 
 def delta(cumul):
     diff = []
-    for i in range(1,len(cumul)):
-        diff.append(cumul[i] - cumul[i-1])
+    for i in range(1, len(cumul)):
+        diff.append(cumul[i] - cumul[i - 1])
     return diff
+
 
 def get_pop_list(self):
     # full names includes total or daily
     full_pop_names = []
     self.pop_data = {}
-    
-    region = self.region_dropdown.value        
+
+    region = self.region_dropdown.value
     region_data = None
     if self.region_dropdown.value != 'None' and self.region_dropdown.value != 'Simulation':
         region_data = self.data_description['regional_data'][region]
-    
+
     for pop_name in self.model.populations:
         pop = self.model.populations[pop_name]
         if not pop.hidden:
-            
+
             if region_data is not None:
                 if pop_name in region_data:
-                    if 'total' in region_data[pop_name]:                        
+                    if 'total' in region_data[pop_name]:
                         filename = region_data[pop_name]['total']['filename']
                         header = region_data[pop_name]['total']['header']
                         data = self.pd_dict[filename][header].values
@@ -69,15 +69,14 @@ def get_pop_list(self):
             if region == 'Simulation':
                 if self.sim_model is not None:
                     sim_pop = self.sim_model.populations[pop_name]
-                    if hasattr(sim_pop,'show_sim') and sim_pop.show_sim:                        
+                    if hasattr(sim_pop, 'show_sim') and sim_pop.show_sim:
                         full_pop_names.append('total ' + pop_name)
-                        self.pop_data['total ' + pop_name] = sim_pop.history                       
-                        
-                        
+                        self.pop_data['total ' + pop_name] = sim_pop.history
+
     for pop_name in self.model.populations:
         pop = self.model.populations[pop_name]
         if not pop.hidden and pop.monotonic:
-            
+
             if region_data is not None:
                 if pop_name in region_data:
                     if 'daily' in region_data[pop_name]:
@@ -86,16 +85,17 @@ def get_pop_list(self):
                         data = self.pd_dict[filename][header].values
                         full_pop_names.append('daily ' + pop_name)
                         self.pop_data['daily ' + pop_name] = data
-    
+
             if region == 'Simulation':
                 if self.sim_model is not None:
                     sim_pop = self.sim_model.populations[pop_name]
-                    if hasattr(sim_pop,'show_sim') and sim_pop.show_sim:
+                    if hasattr(sim_pop, 'show_sim') and sim_pop.show_sim:
                         sim_daily = delta(sim_pop.history)
                         full_pop_names.append('daily ' + pop_name)
-                        self.pop_data['daily ' + pop_name] = sim_daily 
-                        
+                        self.pop_data['daily ' + pop_name] = sim_daily
+
     return full_pop_names
+
 
 def new_region_opened(self):
     # update the population chooser
@@ -103,21 +103,21 @@ def new_region_opened(self):
     self.pop_dropdown.options = full_pop_names
     self.full_pop_name = self.pop_dropdown.value
 
+
 def get_tab(self):
-    
     output = widgets.Output()
     plot_output = widgets.Output()
-    
+
     def plot_total(self, axis, y_axis_type, range_list):
 
         region = self.region_dropdown.value
         region_data = None
         if self.region_dropdown.value != 'None' and self.region_dropdown.value != 'Simulation':
             region_data = self.data_description['regional_data'][region]
-            
+
         pop_name = self.full_pop_name[6:]
         pop = self.model.populations[pop_name]
-        
+
         t = range(len(pop.history))
         axis.plot(t, pop.history, lw=2, label=pop_name, color=pop.color)
 
@@ -131,18 +131,18 @@ def get_tab(self):
         if region_data is not None:
             title += ' - ' + region
         if region == 'Simulation':
-            title += ' - Simulation ('+str(self.seed_text_widget.value)+')' 
+            title += ' - Simulation (' + str(self.seed_text_widget.value) + ')'
         axis.set_title(title)
         axis.legend()
         axis.set_yscale(y_axis_type)
-        #axis.set_xlim(left=-1, right=n_days_widget.value)
+        # axis.set_xlim(left=-1, right=n_days_widget.value)
         if y_axis_type == 'log':
             axis.set_ylim(bottom=3)
         else:
             axis.set_ylim(bottom=0)
-            
+
     def plot_daily(self, axis, y_axis_type, range_list):
-        
+
         region = self.region_dropdown.value
         region_data = None
         if self.region_dropdown.value != 'None' and self.region_dropdown.value != 'Simulation':
@@ -150,7 +150,7 @@ def get_tab(self):
 
         pop_name = self.full_pop_name[6:]
         pop = self.model.populations[pop_name]
-        
+
         daily = delta(pop.history)
         t = range(len(daily))
         axis.step(t, daily, lw=2, label=pop_name, color=pop.color)
@@ -160,51 +160,51 @@ def get_tab(self):
         for i in td:
             data.append(self.pop_data[self.full_pop_name][i])
         axis.scatter(td, data, color=pop.color)
-       
+
         title = self.full_pop_name
         if region_data is not None:
             title += ' - ' + region
         if region == 'Simulation':
-            title += ' - Simulation ('+str(self.seed_text_widget.value)+')' 
+            title += ' - Simulation (' + str(self.seed_text_widget.value) + ')'
         axis.set_title(title)
         axis.legend()
         axis.set_yscale(y_axis_type)
-        #axis.set_xlim(left=-1, right=n_days_widget.value)
+        # axis.set_xlim(left=-1, right=n_days_widget.value)
         if y_axis_type == 'log':
             axis.set_ylim(bottom=3)
         else:
             axis.set_ylim(bottom=0)
-    
+
     def make_plot(self, range_list):
         output.clear_output(True)
         plot_output.clear_output(True)
-        
+
         with plot_output:
-    
-            fig, axes = plt.subplots(1, 2, figsize=(16,7))
-    
+
+            fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+
             axis = axes[0]
             y_axis_type = 'linear'
-    
+
             if self.pop_dropdown.value[:5] == 'total':
                 plot_total(self, axis, y_axis_type, range_list)
             else:
                 plot_daily(self, axis, y_axis_type, range_list)
-    
+
             axis = axes[1]
             y_axis_type = 'log'
-    
+
             if self.pop_dropdown.value[:5] == 'total':
                 plot_total(self, axis, y_axis_type, range_list)
             else:
                 plot_daily(self, axis, y_axis_type, range_list)
-    
+
             self.last_plot = plt.gcf()
             plt.show()
 
     full_pop_names = get_pop_list(self)
     self.pop_dropdown = widgets.Dropdown(options=full_pop_names, description='Population:', disabled=False)
-    
+
     def pop_dropdown_eventhandler(change):
         # update list of visible populations in case it has changed
         full_pop_names = get_pop_list(self)
@@ -236,15 +236,14 @@ def get_tab(self):
                     bounds[0] = int(bounds[0])
                     bounds[1] = int(bounds[1])
         return bounds
-    
+
     def get_bounds_text(parameter):
         # turn the existing bounds into bound_text
         if parameter.parameter_type == 'float':
             bound_text = "{0:0.3f}:{1:0.3f}".format(parameter.get_min(), parameter.get_max())
         elif parameter.parameter_type == 'int':
-            bound_text = str(int(parameter.get_min()))+':'+str(int(parameter.get_max()))
+            bound_text = str(int(parameter.get_min())) + ':' + str(int(parameter.get_max()))
         return bound_text
-        
 
     def variable_checkbox_eventhandler(change):
         # update the status of the model parameter - set bounds if appropriate
@@ -265,7 +264,7 @@ def get_tab(self):
                 status_changed = True
                 par.set_fixed()
                 with output:
-                    print('Parameter '+par_name+' now set to fixed.')
+                    print('Parameter ' + par_name + ' now set to fixed.')
         # update parameter list, if a variable changed its status
         # after updating, go back to select the revised par
         if status_changed:
@@ -277,10 +276,10 @@ def get_tab(self):
                 prefix = '* '
             else:
                 prefix = '  '
-            self.full_par_dropdown.value = prefix+selected[2:]
+            self.full_par_dropdown.value = prefix + selected[2:]
 
     variable_checkbox.observe(variable_checkbox_eventhandler, names='value')
-    
+
     def variable_bound_text_eventhandler(change):
         output.clear_output(True)
         # update the bounds
@@ -293,18 +292,19 @@ def get_tab(self):
             par.set_max(bounds[1])
 
             with output:
-                print('Parameter '+par_name)
-                print('Bounds for variation:' +get_bounds_text(par))
-                if par.parameter_type == 'int' and bounds[1]-bounds[0] > 10:
+                print('Parameter ' + par_name)
+                print('Bounds for variation:' + get_bounds_text(par))
+                if par.parameter_type == 'int' and bounds[1] - bounds[0] > 10:
                     print('*** WARNING *** Integers are scanned')
                     print('*** REDUCE RANGE OF SCAN ***')
+
     variable_bound_text.observe(variable_bound_text_eventhandler, names='value')
 
     def par_dropdown_eventhandler(change):
         # update list of visible parameters in case it has changed
         full_par_names = get_par_list(self)
         self.full_par_dropdown.options = full_par_names
-        
+
         par_name = self.full_par_dropdown.value[2:]
         prefix = self.full_par_dropdown.value[:2]
         par = self.model.parameters[par_name]
@@ -315,11 +315,12 @@ def get_tab(self):
         else:
             variable_checkbox.value = False
             variable_bound_text.disabled = True
+
     self.full_par_dropdown.observe(par_dropdown_eventhandler, names='value')
-    
+
     def do_fit(b):
         date_range = self.date_range_text.value
-        range_list = [0,0]
+        range_list = [0, 0]
         if date_range.find(':') > 0:
             splits = date_range.split(':')
             if len(splits) == 2:
@@ -329,8 +330,8 @@ def get_tab(self):
             range_list[0] = 0
             range_list[1] = len(self.pop_data[self.full_pop_name]) - 1
         # check if NaNs exist
-        nan_list=[]
-        for day in range(range_list[0],range_list[1]):
+        nan_list = []
+        for day in range(range_list[0], range_list[1]):
             if np.isnan(self.pop_data[self.full_pop_name][day]):
                 nan_list.append(str(day))
         if len(nan_list) != 0:
@@ -349,20 +350,20 @@ def get_tab(self):
                 # print result of scan:
                 with output:
                     print('Scan performed over integer')
-                    print('variable:'+scan_dict['name'])
+                    print('variable:' + scan_dict['name'])
                     val_list = scan_dict['val_list']
                     chi2_list = scan_dict['chi2_list']
                     for i in range(len(val_list)):
-                        print(str(val_list[i])+': chi2='+str(chi2_list[i]))
+                        print(str(val_list[i]) + ': chi2=' + str(chi2_list[i]))
             else:
                 popt, pcov = self.optimizer.fit()
-                make_plot(self,range_list)
+                make_plot(self, range_list)
                 # update the parameter value on the explore tab, so that when going to that page,
                 # the old parameter value won't be reloaded
                 par_name = self.param_dropdown.value
                 par = self.model.parameters[par_name]
                 self.val_text_widget.value = par.get_value()
-        
+
     def fix_all(b):
         full_par_names = get_par_list(self)
         changed_list = []
@@ -386,45 +387,45 @@ def get_tab(self):
         description='  Fit & plot', button_style='', tooltip='Perform fit and plot result', icon='check')
     fix_button = widgets.Button(
         description='  Fix all', button_style='', tooltip='Change all variable parameters to fixed', icon='warning')
-    
+
     fit_button.on_click(do_fit)
     fix_button.on_click(fix_all)
-    
+
     def show_vars(b):
         plot_output.clear_output(True)
 
         with plot_output:
             print(tools.table.variable_parameter_table(self.model, width=110))
-    
+
     show_vars_button = widgets.Button(
         description='  Show vars', button_style='', tooltip='Show a table of variable parameters', icon='')
     show_vars_button.on_click(show_vars)
-    
+
     hspace = widgets.HTML(
-        value="&nbsp;"*24,
+        value="&nbsp;" * 24,
         placeholder='Some HTML',
         description='')
-    
+
     header_html = widgets.VBox([
         widgets.HTML(
-            value="<h1><a href:='https://www.pypm.ca'>pyPM</a></h1><p style='font-size: 26px;'>analyze</p>",
+            value="<h1><a href:='https://www.pypm.ca'>pyPM.ca</a></h1><p style='font-size: 26px;'>analyze</p>",
             placeholder='',
             description='')])
 
     header_hbox = widgets.HBox([header_html, hspace, show_vars_button])
-            
-    left_box = widgets.VBox([self.pop_dropdown, 
-                             self.date_range_text, 
-                             self.full_par_dropdown, 
-                             variable_checkbox,  
+
+    left_box = widgets.VBox([self.pop_dropdown,
+                             self.date_range_text,
+                             self.full_par_dropdown,
+                             variable_checkbox,
                              variable_bound_text,
-                             widgets.HBox([fit_button,fix_button])
+                             widgets.HBox([fit_button, fix_button])
                              ])
-    
+
     return AppLayout(header=header_hbox,
-              left_sidebar=left_box,
-              center=output,
-              right_sidebar=hspace,
-              footer=plot_output,
-              pane_widths=[2, 2, 2],
-              pane_heights=[1, 2, '460px'])
+                     left_sidebar=left_box,
+                     center=output,
+                     right_sidebar=hspace,
+                     footer=plot_output,
+                     pane_widths=[2, 2, 2],
+                     pane_heights=[1, 2, '460px'])

@@ -8,9 +8,9 @@ Tabs for editing connectors
 from __future__ import print_function
 import ipywidgets as widgets
 
-from pypm import Model, Population, Delay, Parameter, Multiplier, Propagator, \
+from pypmca import Model, Population, Delay, Parameter, Multiplier, Propagator, \
     Splitter, Adder, Subtractor, Chain, Modifier, Injector
-from pypm.tools import table
+from pypmca.tools import table
 
 def get_conn_tab(self):
 

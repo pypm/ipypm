@@ -250,7 +250,7 @@ def get_tab(self):
 
     header_html = widgets.VBox([
         widgets.HTML(
-            value="<h1><a href:='https://www.pypm.ca'>pyPM</a></h1><p style='font-size: 26px;'>compare</p>",
+            value="<h1><a href:='https://www.pypm.ca'>pyPM.ca</a></h1><p style='font-size: 26px;'>compare</p>",
             placeholder='',
             description='')])
     

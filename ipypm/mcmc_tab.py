@@ -19,8 +19,8 @@ from scipy import stats
 import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
 
-from pypm.analysis.Optimizer import Optimizer
-from pypm.tools import table
+from pypmca.analysis.Optimizer import Optimizer
+from pypmca.tools import table
 
 def get_par_list(self):
     # full names include '* ' if variable
@@ -443,7 +443,7 @@ def get_tab(self):
     
     header_html = widgets.VBox([
         widgets.HTML(
-            value="<h1><a href:='https://www.pypm.ca'>pyPM</a></h1><p style='font-size: 26px;'>MCMC</p>",
+            value="<h1><a href:='https://www.pypm.ca'>pyPM.ca</a></h1><p style='font-size: 26px;'>MCMC</p>",
             placeholder='',
             description='')])
 

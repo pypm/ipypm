@@ -1,4 +1,9 @@
-pypm
+pypmca
 scipy
 numpy
 texttable
+ipywidgets
+matplotlib
+requests
+pandas
+setuptools

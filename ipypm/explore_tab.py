@@ -177,11 +177,7 @@ def get_tab(self):
 #    time_step_widget = widgets.BoundedFloatText(
 #        value=1., min=0.02, max=2.0, step=0.05, description='time_step:',
 #        tooltip='length of each step in the calculation: disabled for now', disabled=True)
-    
-    self.n_days_widget = widgets.BoundedIntText(
-        value=70, min=10, max=300, step=1, description='n_days:',
-        tooltip='number of days to model: sets the upper time range of plots')
-    
+
     plot_1 = widgets.Dropdown(
         options=['linear total', 'log total', 'linear daily', 'log daily'],
         value='linear total', description='Plot #1:', tooltip='Plot on left if the second plot is not None')
@@ -375,12 +371,6 @@ def get_tab(self):
                     print(now_enabled)
 
     self.transitions_chooser.observe(tran_choo_eventhandler, names='value')
-    
-    # This will generally be called before data has been read, but will
-    # be populated once the datafile is read
-    region_list, region_selected = get_region_list(self)
-    self.region_dropdown = widgets.Dropdown(options=region_list,
-                                       description='Region data:')
 
     def region_dropdown_eventhandler(change):    
         output.clear_output(True)
@@ -520,7 +510,7 @@ def get_tab(self):
 
     header_html = widgets.VBox([
         widgets.HTML(
-            value="<h1><a href:='https://www.pypm.ca'>pyPM</a></h1><p style='font-size: 26px;'>explore</p>",
+            value="<h1><a href:='https://www.pypm.ca'>pyPM.ca</a></h1><p style='font-size: 26px;'>explore</p>",
             placeholder='',
             description='')])
 

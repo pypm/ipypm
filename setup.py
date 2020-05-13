@@ -6,21 +6,22 @@ from setuptools import setup, find_packages
 import versioneer
 
 descr = """
-The pyPM population modeller (pyPM.ca) is a general framework for building models 
-of virus spread using discrete-time difference equations.  
+The ``pyPM.ca`` population modeller (www.pyPM.ca) describes connected systems with
+discrete-time difference equations. It was developed specifically
+to understand and characterize the CoViD-19 epidemic. 
 
-A pyPM model consists of a set of population objects connected by connector 
-objects, allowing expectations and simulated data for time histories (such as 
-positive tests and ICU admissions) to be produced. Propagation from one 
-population to another is done with realistic time lags, defined by normal delay 
-distributions, with the mean and standard deviation specified for each connector. 
-It is important to note that models based on ODEs (ordinary differential 
-equations), popular in the virus modelling community perhaps for historical 
-reasons, are not able to correctly model the propagation of infectious bursts to 
-the reporting stage.
+This package, ipypm, is a convenient graphical user interface (GUI) for
+pyPM.ca based in interactive python widgets for use inside a Jupyter notebook.
+After opening the GUI in a notebook, the user can open a pyPM.ca model
+and compare its predictions with data.
+Models and data can be accessed on the local filesystem or downloaded
+from a network server.
+The model parameters can be adjusted manually or by fitting to data.
+Models can be examined in detail and modified through the GUI, without
+programming.
 """
 
-requirements = ['pypm', 'scipy', 'numpy', 'ipywidgets']
+requirements = ['pypmca', 'scipy', 'numpy', 'ipywidgets']
 
 setup_requirements = ['pytest-runner', ] + requirements
 
@@ -40,7 +41,7 @@ setup(author="Dean Karlen",
           'Programming Language :: Python :: 3.7',
           'Programming Language :: Python :: 3.8',
           ],
-      description="GUI for Population Modeler",
+      description="GUI for pyPM.ca Population Modeler",
       install_requires=requirements,
       license="GNU General Public License v3",
       long_description=descr,

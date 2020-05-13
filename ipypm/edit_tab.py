@@ -11,9 +11,9 @@ import ipywidgets as widgets
 from datetime import date
 import pickle
 
-from pypm import Model, Population, Delay, Parameter, Multiplier, Propagator, \
+from pypmca import Model, Population, Delay, Parameter, Multiplier, Propagator, \
     Splitter, Adder, Subtractor, Chain, Modifier, Injector
-from pypm.tools import table
+from pypmca.tools import table
 
 from ipypm import edit_connectors_tab
 

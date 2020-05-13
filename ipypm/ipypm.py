@@ -5,9 +5,6 @@ Testing ipython calls from Jupyter notebook
 @author: karlen
 """
 
-#import sys
-#sys.path.insert(1, '/Users/karlen/pypm/src')
-
 import pickle
 import ipywidgets as widgets
 from datetime import date
@@ -16,7 +13,7 @@ from ipypm import analyze_tab, compare_tab, explore_tab, main_tab
 
 
 class ipypm:
-    """ GUI for pyPM engine based on ipywidgets for use with Jupyter notebook
+    """ GUI for pyPM.ca engine based on ipywidgets for use with Jupyter notebook
     """
 
     def __init__(self):
@@ -32,12 +29,10 @@ class ipypm:
         self.edit_tab_widget = None
         self.last_plot = None
         self.transitions_chooser = None
-        self.region_dropdown = None
         self.region_dropdowns = []
         self.param_dropdown = None
         self.val_text_widget = None
         self.seed_text_widget = None
-        self.n_days_widget = None
         self.pop_data = None
         self.pop_dropdown = None
         self.date_range_text = None
@@ -64,6 +59,10 @@ class ipypm:
         self.open_model_output = widgets.Output(layout={'width': '60%'})
         self.open_data_output = widgets.Output()
         self.region_data_output = widgets.Output(layout={'width': '60%'})
+        self.region_dropdown = widgets.Dropdown(description='Region data:')
+        self.n_days_widget = widgets.BoundedIntText(
+            value=70, min=10, max=300, step=1, description='n_days:',
+            tooltip='number of days to model: sets the upper time range of plots')
 
     def get_display(self):
         """ Returns widget that can be displayed in a Jupyter notebook cell
