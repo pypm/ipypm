@@ -21,6 +21,7 @@ class ipypm:
         self.model = None
         self.sim_model = None
         self.models_compare = {}
+        self.models_total_population = {}
         self.data_description = None
         self.pd_dict = None
         self.model_folder_text_widget = None
@@ -50,6 +51,8 @@ class ipypm:
         self.model_filenames = None
         self.region_data_folders = None
 
+        # widgets shared on more than one tab:
+
         self.model_name = widgets.Text(description='Name:')
         self.model_description = widgets.Textarea(description='Description:')
         self.model_t0 = widgets.DatePicker(description='t_0:', value=date(2020, 3, 1),
@@ -60,9 +63,16 @@ class ipypm:
         self.open_data_output = widgets.Output()
         self.region_data_output = widgets.Output(layout={'width': '60%'})
         self.region_dropdown = widgets.Dropdown(description='Region data:')
+        n_days = (date.today() - self.model_t0.value).days
+        n_days = n_days - n_days%10 + 10
         self.n_days_widget = widgets.BoundedIntText(
-            value=70, min=10, max=300, step=1, description='n_days:',
+            value=n_days, min=10, max=300, step=1, description='n_days:',
             tooltip='number of days to model: sets the upper time range of plots')
+        # Compare A and B
+        self.model_names = [widgets.Text(value='', description='Model A:', disabled=True),
+                            widgets.Text(value='', description='Model B:', disabled=True)]
+        self.model_descriptions = [widgets.Textarea(value='', description='Description:', disabled=True),
+                                   widgets.Textarea(value='', description='Description:', disabled=True)]
 
     def get_display(self):
         """ Returns widget that can be displayed in a Jupyter notebook cell
@@ -111,17 +121,14 @@ class ipypm:
     
     def open_model(self, filename, my_pickle):
         self.open_model_output.clear_output(True)
-        self.model = pickle.loads(my_pickle)
-        self.model_name.value = self.model.name
-        self.model_description.value = self.model.description
-        self.model_t0.value = self.model.t0
-        self.model_time_step.value = self.model.get_time_step()
+        model = pickle.loads(my_pickle)
 
-        self.all_tabs()
         with self.open_model_output:
             print('Filename: '+filename)
-            print('Model loaded for data analysis. It has:')
-            print(len(self.model.populations), ' Populations')
-            print(len(self.model.connectors), ' Connectors')
-            print(len(self.model.parameters), ' Parameters')
-            print(len(self.model.transitions), ' Transitions')
+            print('Model loaded. It has:')
+            print(len(model.populations), ' Populations')
+            print(len(model.connectors), ' Connectors')
+            print(len(model.parameters), ' Parameters')
+            print(len(model.transitions), ' Transitions')
+
+        return model

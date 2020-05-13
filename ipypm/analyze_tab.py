@@ -50,7 +50,7 @@ def get_pop_list(self):
 
     region = self.region_dropdown.value
     region_data = None
-    if self.region_dropdown.value != 'None' and self.region_dropdown.value != 'Simulation':
+    if region is not None and region != 'None' and region != 'Simulation':
         region_data = self.data_description['regional_data'][region]
 
     for pop_name in self.model.populations:
@@ -202,8 +202,7 @@ def get_tab(self):
             self.last_plot = plt.gcf()
             plt.show()
 
-    full_pop_names = get_pop_list(self)
-    self.pop_dropdown = widgets.Dropdown(options=full_pop_names, description='Population:', disabled=False)
+    self.pop_dropdown = widgets.Dropdown(description='Population:', disabled=False)
 
     def pop_dropdown_eventhandler(change):
         # update list of visible populations in case it has changed
@@ -329,9 +328,16 @@ def get_tab(self):
         else:
             range_list[0] = 0
             range_list[1] = len(self.pop_data[self.full_pop_name]) - 1
-        # check if NaNs exist
+        # check if NaNs exist or if days go outside range
         nan_list = []
-        for day in range(range_list[0], range_list[1]):
+        range_max = range_list[1]
+        last_pop_day = len(self.pop_data[self.full_pop_name])
+        if range_list[1] > last_pop_day:
+            range_max = last_pop_day
+            with output:
+                print('Data available up to day ',last_pop_day)
+                print('Remove the extra days from range')
+        for day in range(range_list[0], range_max):
             if np.isnan(self.pop_data[self.full_pop_name][day]):
                 nan_list.append(str(day))
         if len(nan_list) != 0:

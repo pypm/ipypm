@@ -468,7 +468,7 @@ def get_tab(self):
                 print('Please try again.')                
     
     hspace = widgets.HTML(
-        value="&nbsp;"*4,
+        value="&nbsp;"*12,
         placeholder='Some HTML',
         description='')
     
@@ -500,13 +500,13 @@ def get_tab(self):
     model_save = widgets.VBox([widgets.HBox([model_save_button, plot_save_button]),
                                model_folder, model_filename])
     
-    model_upload = widgets.FileUpload(accept='.pypm',multiple=False)
-    def model_upload_eventhandler(change):    
-        filename = list(model_upload.value.keys())[0]
-        my_pickle = model_upload.value[filename]['content']
-        self.open_model(filename, my_pickle)
+    #model_upload = widgets.FileUpload(accept='.pypm',multiple=False)
+    #def model_upload_eventhandler(change):
+    #    filename = list(model_upload.value.keys())[0]
+    #    my_pickle = model_upload.value[filename]['content']
+    #    self.open_model(filename, my_pickle)
 
-    model_upload.observe(model_upload_eventhandler, names='value')
+    #model_upload.observe(model_upload_eventhandler, names='value')
 
     header_html = widgets.VBox([
         widgets.HTML(
@@ -514,7 +514,7 @@ def get_tab(self):
             placeholder='',
             description='')])
 
-    header_hbox = widgets.HBox([header_html, hspace, model_upload, model_id, header_save_hspace,
+    header_hbox = widgets.HBox([header_html, hspace, model_id, header_save_hspace,
                                 model_save])
     
     model_save_button.on_click(save_model_file)
