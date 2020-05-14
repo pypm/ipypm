@@ -305,8 +305,11 @@ def get_tab(self):
                 if bounds[1] - bounds[0] > 15:
                     status = False
                     print('***')
-                    print('*** NOTICE *** Integer variable parameter ('+par.name+') will be scanned')
-                    print('*** REDUCE RANGE OF SCAN to less than 15 ***')
+                    print('*** NOTICE *** Integer variable')
+                    print('    parameter ('+par.name+')')
+                    print('    will be scanned ***')
+                    print('*** REDUCE RANGE OF SCAN to less ')
+                    print('    than 15 ***')
         return status
 
     def par_dropdown_eventhandler(change):
@@ -365,7 +368,8 @@ def get_tab(self):
                 if not check_bounds(par):
                     status = False
                     with output:
-                        print('Problem with bounds for variable: '+par.name)
+                        print('Problem with bounds for variable:')
+                        print(par.name)
             if status:
                 # fit the parameters:
                 self.optimizer = Optimizer(self.model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list)
@@ -402,6 +406,16 @@ def get_tab(self):
                 par = self.model.parameters[par_name]
                 par.set_fixed()
                 changed_list.append(par_name)
+                if par.parameter_type == 'int':
+                    # return the min/max to their original values
+                    prior = par.prior_parameters
+                    if prior is not None:
+                        if 'half_width' in prior:
+                            hw = prior['half_width']
+                            mean = prior['mean']
+                            par.set_min(mean-hw)
+                            par.set_max(mean+hw)
+
         if len(changed_list) > 0:
             output.clear_output(True)
             # update the dropdown list
