@@ -1,5 +1,5 @@
 ===================================
-ipypm GUI for Population Modeler
+ipypm: GUI for the pyPM.ca Population Modeler
 ===================================
 
 

@@ -21,7 +21,8 @@ Models can be examined in detail and modified through the GUI, without
 programming.
 """
 
-requirements = ['pypmca', 'scipy', 'numpy', 'ipywidgets']
+requirements = ['pypmca', 'scipy', 'numpy', 'ipywidgets', 'texttable', 'matplotlib',
+                'requests', 'pandas']
 
 setup_requirements = ['pytest-runner', ] + requirements
 
@@ -40,7 +41,7 @@ setup(author="Dean Karlen",
           'Programming Language :: Python :: 3.6',
           'Programming Language :: Python :: 3.7',
           'Programming Language :: Python :: 3.8',
-          ],
+      ],
       description="GUI for pyPM.ca Population Modeler",
       install_requires=requirements,
       license="GNU General Public License v3",
