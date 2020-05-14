@@ -12,6 +12,10 @@ from datetime import date
 from ipypm import analyze_tab, compare_tab, explore_tab, main_tab
 
 
+def run_gui():
+    """ simple startup"""
+    return ipypm().get_display()
+
 class ipypm:
     """ GUI for pyPM.ca engine based on ipywidgets for use with Jupyter notebook
     """
@@ -83,7 +87,7 @@ class ipypm:
         return self.main_tab_widget
 
     def all_tabs(self):
-        """ Updates the tab once a model has been defined (readin or created)
+        """ Updates the tab once a model has been defined (read in or created)
         """
 
         main_tab.all_tabs(self)
