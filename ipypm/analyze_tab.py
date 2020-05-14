@@ -293,12 +293,21 @@ def get_tab(self):
             with output:
                 print('Parameter ' + par_name)
                 print('Bounds for variation:' + get_bounds_text(par))
-                if par.parameter_type == 'int' and bounds[1] - bounds[0] > 10:
-                    par.set_max(bounds[0]+10)
-                    print('*** NOTICE *** Integers are to be scanned')
-                    print('*** RANGE OF SCAN reduced to: '+str(bounds[0]+':'+str(bounds[0]+10)))
+                check_bounds(par)
 
     variable_bound_text.observe(variable_bound_text_eventhandler, names='value')
+
+    def check_bounds(par):
+        status = True
+        if par.get_status() == 'variable':
+            if par.parameter_type == 'int':
+                bounds = get_bounds(par, variable_bound_text.value)
+                if bounds[1] - bounds[0] > 15:
+                    status = False
+                    print('***')
+                    print('*** NOTICE *** Integer variable parameter ('+par.name+') will be scanned')
+                    print('*** REDUCE RANGE OF SCAN to less than 15 ***')
+        return status
 
     def par_dropdown_eventhandler(change):
         # update list of visible parameters in case it has changed
@@ -333,7 +342,9 @@ def get_tab(self):
         nan_list = []
         range_max = range_list[1]
         last_pop_day = len(self.pop_data[self.full_pop_name])
+        status = True
         if range_list[1] > last_pop_day:
+            status = False
             range_max = last_pop_day
             with output:
                 print('Data available up to day ',last_pop_day)
@@ -342,34 +353,44 @@ def get_tab(self):
             if np.isnan(self.pop_data[self.full_pop_name][day]):
                 nan_list.append(str(day))
         if len(nan_list) != 0:
+            status = False
             with output:
                 print('Some data is Nan. Remove from range...')
                 print(','.join(nan_list))
-        else:
-            # fit the parameters:
-            self.optimizer = Optimizer(self.model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list)
-            # The optimizer cannot scan over integer variable parameters
-            # Strip those out and do a scan over them to find the
-            # fit with the lowest chi^2:
-            scan_dict = self.optimizer.i_fit()
-            if scan_dict is not None:
-                output.clear_output(True)
-                # print result of scan:
-                with output:
-                    print('Scan performed over integer')
-                    print('variable:' + scan_dict['name'])
-                    val_list = scan_dict['val_list']
-                    chi2_list = scan_dict['chi2_list']
-                    for i in range(len(val_list)):
-                        print(str(val_list[i]) + ': chi2=' + str(chi2_list[i]))
-            else:
-                popt, pcov = self.optimizer.fit()
-                make_plot(self, range_list)
-                # update the parameter value on the explore tab, so that when going to that page,
-                # the old parameter value won't be reloaded
-                par_name = self.param_dropdown.value
+        if status:
+            # check that no long scan of integers will happen
+            status = True
+            for par_name in self.model.parameters:
                 par = self.model.parameters[par_name]
-                self.val_text_widget.value = par.get_value()
+                if not check_bounds(par):
+                    status = False
+                    with output:
+                        print('Problem with bounds for variable: '+par.name)
+            if status:
+                # fit the parameters:
+                self.optimizer = Optimizer(self.model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list)
+                # The optimizer cannot scan over integer variable parameters
+                # Strip those out and do a scan over them to find the
+                # fit with the lowest chi^2:
+                scan_dict = self.optimizer.i_fit()
+                if scan_dict is not None:
+                    output.clear_output(True)
+                    # print result of scan:
+                    with output:
+                        print('Scan performed over integer')
+                        print('variable:' + scan_dict['name'])
+                        val_list = scan_dict['val_list']
+                        chi2_list = scan_dict['chi2_list']
+                        for i in range(len(val_list)):
+                            print(str(val_list[i]) + ': chi2=' + str(chi2_list[i]))
+                else:
+                    popt, pcov = self.optimizer.fit()
+                    make_plot(self, range_list)
+                    # update the parameter value on the explore tab, so that when going to that page,
+                    # the old parameter value won't be reloaded
+                    par_name = self.param_dropdown.value
+                    par = self.model.parameters[par_name]
+                    self.val_text_widget.value = par.get_value()
 
     def fix_all(b):
         full_par_names = get_par_list(self)
