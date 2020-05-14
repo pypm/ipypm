@@ -10,7 +10,8 @@ import ipywidgets as widgets
 
 from pypmca import Model, Population, Delay, Parameter, Multiplier, Propagator, \
     Splitter, Adder, Subtractor, Chain, Modifier, Injector
-from pypmca.tools import table
+
+import pypmca.tools.table as ptt
 
 def get_conn_tab(self):
 
@@ -36,7 +37,7 @@ def get_conn_tab(self):
     def con_table_handler(b):
         table_output.clear_output(True)
         with table_output:
-            print(tools.table.connector_table(self.edit_model, width=110))    
+            print(ptt.connector_table(self.edit_model, width=110))
     con_table.on_click(con_table_handler)
 
     return widgets.VBox([con_table,connectors_tab,table_output])

@@ -15,7 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from pypmca.analysis.Optimizer import Optimizer
-
+import pypmca.tools.table as ptt
 
 def get_par_list(self):
     # full names include '* ' if variable
@@ -294,8 +294,9 @@ def get_tab(self):
                 print('Parameter ' + par_name)
                 print('Bounds for variation:' + get_bounds_text(par))
                 if par.parameter_type == 'int' and bounds[1] - bounds[0] > 10:
-                    print('*** WARNING *** Integers are scanned')
-                    print('*** REDUCE RANGE OF SCAN ***')
+                    par.set_max(bounds[0]+10)
+                    print('*** NOTICE *** Integers are to be scanned')
+                    print('*** RANGE OF SCAN reduced to: '+str(bounds[0]+':'+str(bounds[0]+10)))
 
     variable_bound_text.observe(variable_bound_text_eventhandler, names='value')
 
@@ -401,7 +402,7 @@ def get_tab(self):
         plot_output.clear_output(True)
 
         with plot_output:
-            print(tools.table.variable_parameter_table(self.model, width=110))
+            print(ptt.variable_parameter_table(self.model, width=110))
 
     show_vars_button = widgets.Button(
         description='  Show vars', button_style='', tooltip='Show a table of variable parameters', icon='')

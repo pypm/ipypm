@@ -13,7 +13,7 @@ import pickle
 
 from pypmca import Model, Population, Delay, Parameter, Multiplier, Propagator, \
     Splitter, Adder, Subtractor, Chain, Modifier, Injector
-from pypmca.tools import table
+import pypmca.tools.table as ptt
 
 from ipypm import edit_connectors_tab
 
@@ -273,7 +273,7 @@ def get_parameters_tab(self):
     def par_table_handler(b):
         table_output.clear_output(True)
         with table_output:
-            print(tools.table.parameter_table(self.edit_model, width=110))
+            print(ptt.parameter_table(self.edit_model, width=110))
     
     par_table.on_click(par_table_handler)
 
@@ -319,7 +319,7 @@ def get_delays_tab(self):
 
     def refresh(b):
         if self.edit_model is not None:
-            self.delays = self.get_model_delays(self)
+            self.delays = self.get_model_delays()
             delay_name_list =  list(self.delays.keys()) + list(self.new_delays.keys())
             delay_name_list.sort()
             
@@ -468,7 +468,7 @@ def get_delays_tab(self):
     def delay_table_handler(b):
         table_output.clear_output(True)
         with table_output:
-            print(tools.table.delay_table(self.edit_model, width=110))
+            print(ptt.delay_table(self.edit_model, width=110))
     delay_table.on_click(delay_table_handler)
 
     
@@ -690,7 +690,7 @@ def get_populations_tab(self):
     def pop_table_handler(b):
         table_output.clear_output(True)
         with table_output:
-            print(tools.table.population_table(self.edit_model, width=110))
+            print(ptt.population_table(self.edit_model, width=110))
     
     pop_table.on_click(pop_table_handler)
 
@@ -873,7 +873,7 @@ def get_injector_tab(self):
     def inj_table_handler(b):
         table_output.clear_output(True)
         with table_output:
-            print(tools.table.injector_table(self.edit_model,
+            print(ptt.injector_table(self.edit_model,
                                              width=105, reveal=True))
     
     inj_table.on_click(inj_table_handler)
@@ -1048,7 +1048,7 @@ def get_modifier_tab(self):
     def mod_table_handler(b):
         table_output.clear_output(True)
         with table_output:
-            print(tools.table.modifier_table(self.edit_model,
+            print(ptt.modifier_table(self.edit_model,
                                              width=105))
     
     mod_table.on_click(mod_table_handler)
@@ -1109,7 +1109,7 @@ def get_boot_tab(self):
                 for boot_excl in boot_excl_list:
                     bel.append(boot_excl)
             else:
-                bel.append(boot_excl)
+                bel.append(boot_excl_list)
             boot_excl_list_text.value = ','.join(bel)
 
     refresh_button.on_click(refresh)

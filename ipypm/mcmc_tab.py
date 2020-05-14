@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
 
 from pypmca.analysis.Optimizer import Optimizer
-from pypmca.tools import table
+import pypmca.tools.table as ptt
 
 def get_par_list(self):
     # full names include '* ' if variable
@@ -430,7 +430,7 @@ def get_tab(self):
         plot_output.clear_output(True)
 
         with plot_output:
-            print(tools.table.variable_parameter_table(self.model, width=110))
+            print(ptt.variable_parameter_table(self.model, width=110))
     
     show_vars_button = widgets.Button(
         description='  Show vars', button_style='', tooltip='Show a table of variable parameters', icon='')
