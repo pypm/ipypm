@@ -6,6 +6,6 @@ To use ipypm:
 
 Start a Jupyter Notebook. In a cell enter the following:
 
-    - import ipypm
-    - my_ipypm = ipypm()
+    - from ipypm import ipypm
+    - my_ipypm = ipypm.ipypm()
     - my_ipypm.get_display()
