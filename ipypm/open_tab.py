@@ -56,7 +56,7 @@ def get_model_tab_net(self):
         self.open_model_output.clear_output()
         success = True
         try:
-            folders_resp = requests.get('http://data.ipypm.ca:8080/list_model_folders/covid19')
+            folders_resp = requests.get('http://data.ipypm.ca/list_model_folders/covid19')
         except requests.exceptions.RequestException as error:
             with self.open_model_output:
                 print('Error retrieving model folders over network:')
@@ -78,7 +78,7 @@ def get_model_tab_net(self):
             folder = self.region_model_folders[region]
             success = True
             try:
-                models_resp = requests.get('http://data.ipypm.ca:8080/list_models/' + folder)
+                models_resp = requests.get('http://data.ipypm.ca/list_models/' + folder)
             except requests.exceptions.RequestException as error:
                 with self.open_model_output:
                     print('Error retrieving model list over network:')
@@ -100,7 +100,7 @@ def get_model_tab_net(self):
             model_fn = self.model_filenames[model]
             success = True
             try:
-                pypm_resp = requests.get('http://data.ipypm.ca:8080/get_pypm/' + model_fn, stream=True)
+                pypm_resp = requests.get('http://data.ipypm.ca/get_pypm/' + model_fn, stream=True)
             except requests.exceptions.RequestException as error:
                 with self.open_model_output:
                     print('Error retrieving model over network:')
@@ -141,7 +141,7 @@ def get_model_tab_net(self):
             model_fn = self.model_filenames[model]
             success = True
             try:
-                pypm_resp = requests.get('http://data.ipypm.ca:8080/get_pypm/' + model_fn, stream=True)
+                pypm_resp = requests.get('http://data.ipypm.ca/get_pypm/' + model_fn, stream=True)
             except requests.exceptions.RequestException as error:
                 with self.open_model_output:
                     print('Error retrieving model over network:')
@@ -163,7 +163,7 @@ def get_model_tab_net(self):
             model_fn = self.model_filenames[model]
             success = True
             try:
-                pypm_resp = requests.get('http://data.ipypm.ca:8080/get_pypm/' + model_fn, stream=True)
+                pypm_resp = requests.get('http://data.ipypm.ca/get_pypm/' + model_fn, stream=True)
             except requests.exceptions.RequestException as error:
                 with self.open_model_output:
                     print('Error retrieving model over network:')
@@ -284,7 +284,7 @@ def get_data_tab_net(self):
         self.open_data_output.clear_output()
         success = True
         try:
-            folders_resp = requests.get('http://data.ipypm.ca:8080/list_data_folders/covid19')
+            folders_resp = requests.get('http://data.ipypm.ca/list_data_folders/covid19')
         except requests.exceptions.RequestException as error:
             with self.open_data_output:
                 print('Error retrieving data folder list over network:')
@@ -307,7 +307,7 @@ def get_data_tab_net(self):
             data_folder = self.region_data_folders[region]
             success = True
             try:
-                data_desc_resp = requests.get('http://data.ipypm.ca:8080/get_data_desc/' + data_folder)
+                data_desc_resp = requests.get('http://data.ipypm.ca/get_data_desc/' + data_folder)
             except requests.exceptions.RequestException as error:
                 with self.open_data_output:
                     print('Error retrieving data description over network:')
@@ -335,7 +335,7 @@ def get_data_tab_net(self):
                     path = data_folder + '/' + filename
                     success = True
                     try:
-                        csv_resp = requests.get('http://data.ipypm.ca:8080/get_csv/' + path, stream=True)
+                        csv_resp = requests.get('http://data.ipypm.ca/get_csv/' + path, stream=True)
                     except requests.exceptions.RequestException as error:
                         with self.open_data_output:
                             print('Error retrieving data over network:')
