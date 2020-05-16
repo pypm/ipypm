@@ -110,12 +110,14 @@ def get_model_tab_net(self):
             if success:
                 my_pickle = pypm_resp.content
                 filename = model_fn.split('/')[-1]
-                self.model = self.open_model(filename, my_pickle)
-                self.model_name.value = self.model.name
-                self.model_description.value = self.model.description
-                self.model_t0.value = self.model.t0
-                self.model_time_step.value = self.model.get_time_step()
-                self.all_tabs()
+                model = self.open_model(filename, my_pickle)
+                if model is not None:
+                    self.model = model
+                    self.model_name.value = self.model.name
+                    self.model_description.value = self.model.description
+                    self.model_t0.value = self.model.t0
+                    self.model_time_step.value = self.model.get_time_step()
+                    self.all_tabs()
 
     download_button.on_click(download)
     download_label = widgets.Label(value='Open model for analysis:')
@@ -151,10 +153,12 @@ def get_model_tab_net(self):
             if success:
                 my_pickle = pypm_resp.content
                 filename = model_fn.split('/')[-1]
-                self.models_compare['a'] = self.open_model(filename, my_pickle)
-                self.model_names[0].value = self.models_compare['a'].name
-                self.model_descriptions[0].value = self.models_compare['a'].description
-                self.models_total_population['a'] = get_total_population(self.models_compare['a'])
+                model = self.open_model(filename, my_pickle)
+                if model is not None:
+                    self.models_compare['a'] = model
+                    self.model_names[0].value = self.models_compare['a'].name
+                    self.model_descriptions[0].value = self.models_compare['a'].description
+                    self.models_total_population['a'] = get_total_population(self.models_compare['a'])
 
     def download_1(b):
         self.open_model_output.clear_output()
@@ -173,10 +177,12 @@ def get_model_tab_net(self):
             if success:
                 my_pickle = pypm_resp.content
                 filename = model_fn.split('/')[-1]
-                self.models_compare['b'] = self.open_model(filename, my_pickle)
-                self.model_names[1].value = self.models_compare['b'].name
-                self.model_descriptions[1].value = self.models_compare['b'].description
-                self.models_total_population['b'] = get_total_population(self.models_compare['b'])
+                model = self.open_model(filename, my_pickle)
+                if model is not None:
+                    self.models_compare['b'] = model
+                    self.model_names[1].value = self.models_compare['b'].name
+                    self.model_descriptions[1].value = self.models_compare['b'].description
+                    self.models_total_population['b'] = get_total_population(self.models_compare['b'])
 
     download_buttons[0].on_click(download_0)
     download_buttons[1].on_click(download_1)
@@ -211,12 +217,14 @@ def get_model_tab_local(self):
     def model_upload_eventhandler(change):
         filename = list(model_upload.value.keys())[0]
         my_pickle = model_upload.value[filename]['content']
-        self.model = self.open_model(filename, my_pickle)
-        self.model_name.value = self.model.name
-        self.model_description.value = self.model.description
-        self.model_t0.value = self.model.t0
-        self.model_time_step.value = self.model.get_time_step()
-        self.all_tabs()
+        model = self.open_model(filename, my_pickle)
+        if model is not None:
+            self.model = model
+            self.model_name.value = self.model.name
+            self.model_description.value = self.model.description
+            self.model_t0.value = self.model.t0
+            self.model_time_step.value = self.model.get_time_step()
+            self.all_tabs()
 
     model_upload.observe(model_upload_eventhandler, names='value')
 
@@ -236,18 +244,22 @@ def get_model_tab_local(self):
     def model0_upload_eventhandler(change):
         filename = list(model_uploads[0].value.keys())[0]
         my_pickle = model_uploads[0].value[filename]['content']
-        self.models_compare['a'] = self.open_model(filename, my_pickle)
-        self.model_names[0].value = self.models_compare['a'].name
-        self.model_descriptions[0].value = self.models_compare['a'].description
-        self.models_total_population['a'] = get_total_population(self.models_compare['a'])
+        model = self.open_model(filename, my_pickle)
+        if model is not None:
+            self.models_compare['a'] = model
+            self.model_names[0].value = self.models_compare['a'].name
+            self.model_descriptions[0].value = self.models_compare['a'].description
+            self.models_total_population['a'] = get_total_population(self.models_compare['a'])
 
     def model1_upload_eventhandler(change):
         filename = list(model_uploads[1].value.keys())[0]
         my_pickle = model_uploads[1].value[filename]['content']
-        self.models_compare['b'] = self.open_model(filename, my_pickle)
-        self.model_names[1].value = self.models_compare['b'].name
-        self.model_descriptions[1].value = self.models_compare['b'].description
-        self.models_total_population['b'] = get_total_population(self.models_compare['b'])
+        model = self.open_model(filename, my_pickle)
+        if model is not None:
+            self.models_compare['b'] = model
+            self.model_names[1].value = self.models_compare['b'].name
+            self.model_descriptions[1].value = self.models_compare['b'].description
+            self.models_total_population['b'] = get_total_population(self.models_compare['b'])
 
     model_uploads[0].observe(model0_upload_eventhandler, names='value')
     model_uploads[1].observe(model1_upload_eventhandler, names='value')

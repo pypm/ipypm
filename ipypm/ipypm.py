@@ -127,6 +127,14 @@ class ipypm:
         self.open_model_output.clear_output(True)
         model = pickle.loads(my_pickle)
 
+        time_step = model.get_time_step()
+        if time_step > 1.001 or time_step < 0.999:
+            with self.open_model_output:
+                print('Filename: ' + filename)
+                print('*** Model NOT loaded ***')
+                print('Currently, ipypm only supports models with time_step = 1 day.')
+            return None
+
         with self.open_model_output:
             print('Filename: '+filename)
             print('Model loaded. It has:')
