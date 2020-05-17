@@ -110,7 +110,7 @@ def get_tab(self):
         if region_data is not None:
             title += ' - ' + region
         if region == 'Simulation':
-            title += ' - Simulation ('+str(self.seed_text_widget.value)+')' 
+            title += ' - Simulation ('+str(self.get_seed_value())+')'
         axis.set_title(title)
         axis.legend()
         axis.set_yscale(y_axis_type)
@@ -157,7 +157,7 @@ def get_tab(self):
         if region_data is not None:
             title += ' - ' + region
         if region == 'Simulation':
-            title += ' - Simulation ('+str(self.seed_text_widget.value)+')' 
+            title += ' - Simulation ('+str(self.get_seed_value())+')'
         axis.set_title(title)
         axis.legend()
         axis.set_yscale(y_axis_type)
@@ -206,6 +206,14 @@ def get_tab(self):
     def make_plot(b):
         output.clear_output(True)
         plot_output.clear_output(True)
+
+        if self.region_dropdown.value == 'Simulation':
+            self.sim_model = copy.deepcopy(self.model)
+            # produce a new seed if the text_widget value is zero
+            seed = self.get_seed_value(new_seed = True)
+            np.random.seed(seed)
+            self.sim_model.reset()
+            self.sim_model.generate_data(self.n_days_widget.value)
         
         #self.model.parameters[self.param_dropdown.value].set_value(self.val_text_widget.value)
         #run model with current parameters
@@ -374,51 +382,23 @@ def get_tab(self):
 
     def region_dropdown_eventhandler(change):    
         output.clear_output(True)
-        
         region_selected = self.region_dropdown.value
         if self.data_description is not None:
             self.data_description['selected_region'] = region_selected
         if region_selected == 'Simulation':
             self.seed_text_widget.disabled = False
-            self.sim_model = copy.deepcopy(self.model)
-            seed = self.seed_text_widget.value
-            np.random.seed(seed)
-            self.sim_model.reset()
-            self.sim_model.generate_data(self.n_days_widget.value)
         else:
             self.seed_text_widget.disabled = True
-        
         with output:
             print('Changed data region to: '+region_selected)
-            if region_selected == 'Simulation':
-                seed = self.seed_text_widget.value
-                print(' ')
-                print('Simulated sample created using seed:')
-                print(seed)
-                
         self.new_region_opened()
                 
     self.region_dropdown.observe(region_dropdown_eventhandler, names='value')
     
-    self.seed_text_widget = widgets.IntText(value=12345, description='Seed:',
+    self.seed_text_widget = widgets.IntText(value=0, description='Seed:',
                                             disabled=True,
-                                            tooltip='To produce a new simulated sample change this seed',
+                                            tooltip='To use a fixed seed for simulation, enter an integer',
                                             continuous_update=False)
-    def seed_change_eventhandler(change):
-        output.clear_output(True)
-
-        seed = change['new']
-        np.random.seed(seed)
-        self.sim_model = copy.deepcopy(self.model)
-        self.sim_model.reset()
-        self.sim_model.generate_data(self.n_days_widget.value)
-        
-        with output:
-            # For some reason this does not show up in output!
-            print('Simulated sample created using seed:')
-            print(seed)
-
-    self.seed_text_widget.observe(seed_change_eventhandler, names='value')
 
     def save_model_file(b):
         output.clear_output(True)

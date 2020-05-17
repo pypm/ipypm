@@ -8,6 +8,7 @@ Testing ipython calls from Jupyter notebook
 import pickle
 import ipywidgets as widgets
 from datetime import date
+from scipy.stats import randint
 
 from ipypm import analyze_tab, compare_tab, explore_tab, main_tab
 
@@ -15,6 +16,7 @@ from ipypm import analyze_tab, compare_tab, explore_tab, main_tab
 def run_gui():
     """ simple startup"""
     return ipypm().get_display()
+
 
 class ipypm:
     """ GUI for pyPM.ca engine based on ipywidgets for use with Jupyter notebook
@@ -38,6 +40,7 @@ class ipypm:
         self.param_dropdown = None
         self.val_text_widget = None
         self.seed_text_widget = None
+        self.seed_value = None
         self.pop_data = None
         self.pop_dropdown = None
         self.date_range_text = None
@@ -68,7 +71,7 @@ class ipypm:
         self.region_data_output = widgets.Output(layout={'width': '60%'})
         self.region_dropdown = widgets.Dropdown(description='Region data:')
         n_days = (date.today() - self.model_t0.value).days
-        n_days = n_days - n_days%10 + 10
+        n_days = n_days - n_days % 10 + 10
         self.n_days_widget = widgets.BoundedIntText(
             value=n_days, min=10, max=300, step=1, description='n_days:',
             tooltip='number of days to model: sets the upper time range of plots')
@@ -91,25 +94,20 @@ class ipypm:
         """
 
         main_tab.all_tabs(self)
-        
-#    def new_model_opened(self):
-        # repopulate the data analysis tabs
-#        self.all_tabs()
-        #explore_tab.new_model_opened(self)
-        
+
     def new_data_opened(self):
         explore_tab.new_data_opened(self)
         compare_tab.new_data_opened(self)
-        
+
     def new_region_opened(self):
         analyze_tab.new_region_opened(self)
-        
+
     def get_model_delays(self):
         # return a dictionary of model delays indexed by delay_name
         delays = {}
         for key in self.edit_model.connectors:
             con = self.edit_model.connectors[key]
-            if hasattr(con,'delay'):
+            if hasattr(con, 'delay'):
                 if isinstance(con.delay, list):
                     for delay in con.delay:
                         delays[str(delay)] = delay
@@ -122,7 +120,7 @@ class ipypm:
                         for chain_con in con.chain:
                             delays[str(chain_con.delay)] = chain_con.delay
         return delays
-    
+
     def open_model(self, filename, my_pickle):
         self.open_model_output.clear_output(True)
         model = pickle.loads(my_pickle)
@@ -136,7 +134,7 @@ class ipypm:
             return None
 
         with self.open_model_output:
-            print('Filename: '+filename)
+            print('Filename: ' + filename)
             print('Model loaded. It has:')
             print(len(model.populations), ' Populations')
             print(len(model.connectors), ' Connectors')
@@ -144,3 +142,14 @@ class ipypm:
             print(len(model.transitions), ' Transitions')
 
         return model
+
+    def get_seed_value(self, new_seed = False):
+        # returns value of seed specified in the text_widget
+        # if that value is zero, return the seed stored in self.seed_value
+        # if that value is zero, produce a new seed if new_seed is true
+        value = self.seed_text_widget.value
+        if value == 0:
+            if new_seed:
+                self.seed_value = randint.rvs(100000,999999)
+            value = self.seed_value
+        return value

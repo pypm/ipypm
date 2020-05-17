@@ -440,7 +440,7 @@ def get_tab(self):
             print(ptt.variable_parameter_table(self.model, width=110))
 
     show_vars_button = widgets.Button(
-        description='  Show vars', button_style='', tooltip='Show a table of variable parameters', icon='')
+        description='  Show variables', button_style='', tooltip='Show a table of variable parameters', icon='')
     show_vars_button.on_click(show_vars)
 
     hspace = widgets.HTML(
