@@ -261,7 +261,7 @@ def get_propagator_tab(self):
             par_name_list.sort()
             fraction_dropdown.options = par_name_list
             
-            self.delays = self.get_model_delays(self)
+            self.delays = self.get_model_delays()
             delay_name_list =  list(self.delays.keys()) + list(self.new_delays.keys())
             delay_name_list.sort()
             
@@ -315,7 +315,7 @@ def get_propagator_tab(self):
         else:
             fraction = self.new_parameters[fraction_name]
 
-        self.delays = self.get_model_delays(self)
+        self.delays = self.get_model_delays()
         delay_name = delay_dropdown.value
         delay = None
         if delay_name in self.delays:
@@ -444,7 +444,7 @@ def get_chain_tab(self):
             par_name_list.sort()
             fraction_dropdown.options = par_name_list
             
-            self.delays = self.get_model_delays(self)
+            self.delays = self.get_model_delays()
             delay_name_list =  list(self.delays.keys()) + list(self.new_delays.keys())
             delay_name_list.sort()
             
@@ -518,7 +518,7 @@ def get_chain_tab(self):
         else:
             fraction = self.new_parameters[fraction_name]
 
-        self.delays = self.get_model_delays(self)
+        self.delays = self.get_model_delays()
         delay_name = delay_dropdown.value
         delay = None
         if delay_name in self.delays:
@@ -664,7 +664,7 @@ def get_multiplier_tab(self):
             scale_parameter_dropdown.options = par_name_list
             nbinom_par_dropdown.options = par_name_list
             
-            self.delays = self.get_model_delays(self)
+            self.delays = self.get_model_delays()
             delay_name_list =  list(self.delays.keys()) + list(self.new_delays.keys())
             delay_name_list.sort()
             
@@ -756,7 +756,7 @@ def get_multiplier_tab(self):
                 scale_parameter = self.new_parameters[scale_parameter_name]
             mult.scale_parameter =  scale_parameter
             
-            self.delays = self.get_model_delays(self)
+            self.delays = self.get_model_delays()
             delay_name = delay_dropdown.value
             delay = None
             if delay_name in self.delays:
@@ -814,7 +814,7 @@ def get_multiplier_tab(self):
         else:
             scale_parameter = self.new_parameters[scale_parameter_name]
 
-        self.delays = self.get_model_delays(self)
+        self.delays = self.get_model_delays()
         delay_name = delay_dropdown.value
         delay = None
         if delay_name in self.delays:
@@ -1035,7 +1035,7 @@ def get_splitter_tab(self):
                 fraction = self.new_parameters[fraction_name]
             fractions.append(fraction)
 
-        self.delays = self.get_model_delays(self)
+        self.delays = self.get_model_delays()
         delays = []
         delay_names = delay_list_text.value.split(',')
         for delay_name in delay_names:
