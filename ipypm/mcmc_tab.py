@@ -160,7 +160,7 @@ def get_tab(self):
                                        description='Prior pars:', disabled=True, continuous_update=False)
     prior_function_dropdown = widgets.Dropdown(options=['uniform','normal'], 
                                                description='Prior:', disabled=True)
-    mcmc_step_widget = widgets.FloatText(value = 0, description='mcmc step:', 
+    mcmc_step_widget = widgets.FloatText(value = 0., description='mcmc step:',
                                          continuous_update=False, disabled=True)
 
     def get_bounds(parameter, bound_text):
@@ -333,8 +333,11 @@ def get_tab(self):
                                    continuous_update=False, disabled=False)
     n_dof_widget = widgets.IntText(value = 60, description='# dof:', 
                                    continuous_update=False, disabled=False)
+    chi2n_widget = widgets.FloatText(value = 500., description='mean chi2n',
+                                     continuous_update=False, disabled=False)
     n_mcmc_widget = widgets.IntText(value = 5000, description='# MCMC:', 
-                                   continuous_update=False, disabled=False) 
+                                   continuous_update=False, disabled=False)
+    chi2f_checkbox = widgets.Checkbox(value=False, description='calculate chi2f', disabled=False)
     
     auto_cov_button = widgets.Button(
         description='calc autocov', button_style='', 
@@ -355,34 +358,62 @@ def get_tab(self):
         self.optimizer.calc_auto_covariance(n_rep)
         with output:
             print('Autocovariance calculated')
-            print('chi2m =',self.optimizer.chi2m)
                 
     auto_cov_button.on_click(do_auto_cov)
 
     def do_sim_gof(b):
         output.clear_output(True)
         n_rep = n_rep_widget.value
+        self.optimizer.calc_chi2f = chi2f_checkbox.value
         self.optimizer.calc_sim_gof(n_rep)
         with output:
             print('Simulated goodness of fit distribution calculated')
-            print('chi2s =',self.optimizer.chi2s)
+            print('Take note of these values:')
+            print('chi2d = {0:0.1f}'.format(self.optimizer.chi2d))
+            print('chi2m = {0:0.1f} sd = {1:0.1f}'.format(self.optimizer.chi2m, self.optimizer.chi2m_sd))
+            print('chi2n = {0:0.1f} sd = {1:0.1f}'.format(self.optimizer.chi2n, self.optimizer.chi2n_sd))
+            if chi2f_checkbox.value:
+                print('chi2f = {0:0.1f} sd = {1:0.1f}'.format(self.optimizer.chi2f, self.optimizer.chi2f_sd))
+            print('chi2s = {0:0.1f} sd = {1:0.1f}'.format(self.optimizer.chi2s, self.optimizer.chi2s_sd))
 
     sim_gof_button.on_click(do_sim_gof)
 
     def do_mcmc(b):
         output.clear_output(True)
-        n_dof = n_dof_widget.value
-        n_mcmc = n_mcmc_widget.value
-        self.chain = self.optimizer.mcmc(n_dof,n_mcmc)
-        with output:
-            print('MCMC chain produced.')
-            print('fraction accepted =',self.optimizer.accept_fraction)    
+        status = True
+        # check that autocovariance matrix is calculated
+        if self.optimizer.auto_cov is None:
+            status = False
+            with output:
+                print('Auto covariance is needed before starting MCMC')
+        # check that mcmc steps are defined. Check there are no integer variables
+        for par_name in self.model.parameters:
+            par = self.model.parameters[par_name]
+            if par.get_status() == 'variable':
+                if par.parameter_type != 'float':
+                    status = False
+                    with output:
+                        print('Only float parameters allowed in MCMC treatment')
+                        print('Remove: '+par.name)
+                elif par.mcmc_step is None:
+                    status = False
+                    with ouput:
+                        print('MCMC step size missing for: '+par.name)
+
+        if status:
+            n_dof = n_dof_widget.value
+            n_mcmc = n_mcmc_widget.value
+            chi2n = chi2n_widget.value
+            self.chain = self.optimizer.mcmc(n_dof, chi2n, n_mcmc)
+            with output:
+                print('MCMC chain produced.')
+                print('fraction accepted =',self.optimizer.accept_fraction)
     
     mcmc_button.on_click(do_mcmc)
 
     def do_mcmc_plot(b):
         # draw 1/10 of the chain points at random
-        # and produce an ensemble of models
+        # to produce an ensemble of data outcomes
         n_models = int(n_mcmc_widget.value/10)
         n_days = self.n_days_widget.value
         models = []
@@ -394,7 +425,7 @@ def get_tab(self):
                 par = sim_model.parameters[var_name]
                 par.set_value(link[var_name])
             sim_model.reset()
-            #sim_model.evolve_expectations(n_days)
+            # produce data not expectations
             sim_model.generate_data(n_days)
             models.append(sim_model)
             
@@ -433,7 +464,7 @@ def get_tab(self):
             print(ptt.variable_parameter_table(self.model, width=110))
     
     show_vars_button = widgets.Button(
-        description='  Show vars', button_style='', tooltip='Show a table of variable parameters', icon='')
+        description='  Show variables', button_style='', tooltip='Show a table of variable parameters', icon='')
     show_vars_button.on_click(show_vars)
     
     hspace = widgets.HTML(
@@ -447,7 +478,10 @@ def get_tab(self):
             placeholder='',
             description='')])
 
-    header_hbox = widgets.HBox([header_html, hspace, show_vars_button])
+    buttons = widgets.VBox([widgets.HBox([auto_cov_button, sim_gof_button]),
+                            widgets.HBox([mcmc_button, mcmc_plot_button])])
+
+    header_hbox = widgets.HBox([header_html, hspace, show_vars_button, hspace, hspace, buttons])
             
     left_box = widgets.VBox([self.full_par_dropdown, 
                              variable_checkbox,  
@@ -457,10 +491,10 @@ def get_tab(self):
                              widgets.HBox([fix_button])
                              ])
     right_box = widgets.VBox([n_rep_widget,
+                              chi2n_widget,
                               n_dof_widget,
                               n_mcmc_widget,
-                              widgets.HBox([auto_cov_button, sim_gof_button]),
-                              widgets.HBox([mcmc_button, mcmc_plot_button])
+                              chi2f_checkbox
                               ])
     
     return AppLayout(header=header_hbox,
