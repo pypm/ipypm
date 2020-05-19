@@ -11,3 +11,8 @@ History
 * 0.1.3 : prevent models with time_step !=1 from being loaded (not yet supported in ipypm)
 * 0.1.3 : change Simulation on explore tab: if seed is set to zero (default) then new simulation is done each time a plot is produced
 * 0.1.4 : revise MCMC tab
+
+0.2 (2020-05-19)
+----------------
+
+* First beta release on PyPI
