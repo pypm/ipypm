@@ -75,7 +75,9 @@ def get_tab(self):
                     values = []
                     for model in models:
                         sim_pop = model.populations[pop_name]
-                        values.append(sim_pop.history[x]-sim_pop.history[x_ref]-dy_ref)
+                        # scale the models to the same value at x_ref
+                        scale = pop.history[x_ref]/sim_pop.history[x_ref]
+                        values.append((sim_pop.history[x]-sim_pop.history[x_ref])*scale - dy_ref)
                     lower.append(np.percentile(values,2.5))
                     upper.append(np.percentile(values,97.5))
                     
