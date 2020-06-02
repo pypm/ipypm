@@ -516,8 +516,13 @@ def get_populations_tab(self):
     pop_report_noise = widgets.Checkbox(description='Report noise:', 
                                   tooltip='If true, additional fluctuation from the reporting process is included')
     pop_report_noise_parameter = widgets.Dropdown(description='Noise par:', disabled=True, 
-                                             tooltip='Report noise parameter: f = 0.-1. f is the minimum number '+
+                                             tooltip='Report noise parameter: f = 0.-1. f is the minimum '+
                                              'fraction of cases from that day reported that day.')
+    pop_report_backlog_parameter = widgets.Dropdown(description='Backlog par:', disabled=True,
+                                             tooltip='Report noise backlog parameter: f = 0.-1. f is the minimum '+
+                                             'fraction of backlog cases reported that day.')
+    pop_report_days_parameter = widgets.Dropdown(description='Report days:', disabled=True,
+                                                    tooltip='Days reported (Mon=2^0, ..., Sun=2^6) ')
     pop_save = widgets.Button(description='Save changes', tooltip='Save changes to loaded model')
     pop_new = widgets.Button(description='New population', tooltip='Create new population')
     pop_table = widgets.Button(description='Population Table', tooltip='Show all populations in a table')
@@ -559,13 +564,19 @@ def get_populations_tab(self):
         pop_hidden.value = pop.hidden
         pop_color.value = pop.color
         pop_show_sim.value = pop.show_sim
-        report_noise, report_noise_par = pop.get_report_noise()
-        pop_report_noise.value = report_noise
+        report_noise_dict = pop.get_report_noise()
+        pop_report_noise.value = report_noise_dict['report_noise']
         if pop_report_noise.value:
             pop_report_noise_parameter.disabled = False
-            pop_report_noise_parameter.value = str(report_noise_par)
+            pop_report_noise_parameter.value = str(report_noise_dict['report_noise_par'])
+            pop_report_backlog_parameter.disabled = False
+            pop_report_backlog_parameter.value = str(report_noise_dict['report_backlog_par'])
+            pop_report_days_parameter.disabled = False
+            pop_report_days_parameter.value = str(report_noise_dict['report_days'])
         else:
             pop_report_noise_parameter.disabled = True
+            pop_report_backlog_parameter.disabled = True
+            pop_report_days_parameter.disabled = True
 
         with output:
             print('Population options loaded')
@@ -625,15 +636,24 @@ def get_populations_tab(self):
             pop.show_sim = pop_show_sim.value
             if pop_report_noise.value:
                 par_name = pop_report_noise_parameter.value
-                par = None
                 if par_name in self.edit_model.parameters:
-                    par = self.edit_model.parameters[par_name]
+                    noise_par = self.edit_model.parameters[par_name]
                 else:
-                    par = self.new_parameters[par_name]
-                pop.report_noise_par = par
-                pop.set_report_noise(True, par)
+                    noise_par = self.new_parameters[par_name]
+                par_name = pop_report_backlog_parameter.value
+                if par_name in self.edit_model.parameters:
+                    backlog_par = self.edit_model.parameters[par_name]
+                else:
+                    backlog_par = self.new_parameters[par_name]
+                par_name = pop_report_days_parameter.value
+                if par_name in self.edit_model.parameters:
+                    days_par = self.edit_model.parameters[par_name]
+                else:
+                    days_par = self.new_parameters[par_name]
+
+                pop.set_report_noise(True, noise_par, backlog_par, days_par)
             else:
-                pop.set_report_noise(False, None)
+                pop.set_report_noise(False, None, None, None)
                 
             # must update model lists in case new parameters now being used
             self.edit_model.update_lists()
@@ -660,19 +680,33 @@ def get_populations_tab(self):
             initial_value = value_from_string(pop_initial_value.value)
             
         report_noise_parameter = None
+        report_backlog_parameter = None
+        report_days_parameter = None
         if pop_report_noise.value:
             par_name = pop_report_noise_parameter.value
-            par = None
             if par_name in self.edit_model.parameters:
                 par = self.edit_model.parameters[par_name]
             else:
                 par = self.new_parameters[par_name]
             report_noise_parameter = par
+            par_name = pop_report_backlog_parameter.value
+            if par_name in self.edit_model.parameters:
+                par = self.edit_model.parameters[par_name]
+            else:
+                par = self.new_parameters[par_name]
+            report_backlog_parameter = par
+            par_name = pop_report_days_parameter.value
+            if par_name in self.edit_model.parameters:
+                par = self.edit_model.parameters[par_name]
+            else:
+                par = self.new_parameters[par_name]
+            report_days_parameter = par
 
         pop = Population(pop_name.value, initial_value, description='description',
                          hidden=pop_hidden.value, color=pop_color.value,
                          show_sim=pop_show_sim.value, report_noise=pop_report_noise.value,
-                         report_noise_par=report_noise_parameter)
+                         report_noise_par=report_noise_parameter, report_backlog_par=report_backlog_parameter,
+                         report_days_par=report_days_parameter,)
         
         with output:
             if pop.name in self.edit_model.populations or \
@@ -708,6 +742,8 @@ def get_populations_tab(self):
         pop_show_sim,
         pop_report_noise,
         pop_report_noise_parameter,
+        pop_report_backlog_parameter,
+        pop_report_days_parameter,
         widgets.HBox([pop_save,
         pop_new])
         ])
