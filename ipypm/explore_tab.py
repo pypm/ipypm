@@ -75,6 +75,8 @@ def get_tab(self):
         diff = []
         for i in range(1,len(cumul)):
             diff.append(cumul[i] - cumul[i-1])
+        # first daily value is repeated since val(t0-1) is unknown
+        diff.insert(0, diff[0])
         return diff
     
     def plot_total(self, axis, y_axis_type='linear', y_max=0.):
@@ -121,6 +123,49 @@ def get_tab(self):
             axis.set_ylim(bottom=0)
         if (y_max > 0.):
             axis.set_ylim(top=y_max)
+
+    def plot_residual(self, axis, y_max=0.):
+
+        region = self.region_dropdown.value
+        region_data = None
+        if self.region_dropdown.value != 'None' and self.region_dropdown.value != 'Simulation':
+            region_data = self.data_description['regional_data'][region]
+
+        for pop_name in self.model.populations:
+            pop = self.model.populations[pop_name]
+            if not pop.hidden:
+                #t = range(len(pop.history))
+                #axis.plot(t, pop.history, lw=2, label=pop_name, color=pop.color, zorder=2)
+
+                if region_data is not None:
+                    if pop_name in region_data:
+                        if 'total' in region_data[pop_name]:
+                            filename = region_data[pop_name]['total']['filename']
+                            header = region_data[pop_name]['total']['header']
+                            data = self.pd_dict[filename][header].values
+                            td = range(len(data))
+                            residual = [data[i]-pop.history[i] for i in td]
+                            axis.scatter(td, residual, label=pop_name, color=pop.color, zorder=1)
+
+                if region == 'Simulation':
+                    if self.sim_model is not None:
+                        sim_pop = self.sim_model.populations[pop_name]
+                        if hasattr(sim_pop, 'show_sim') and sim_pop.show_sim:
+                            st = range(len(sim_pop.history))
+                            residual = [sim_pop.history[i] - pop.history[i] for i in st]
+                            axis.scatter(st, residual, label=pop_name, color=sim_pop.color, zorder=1)
+
+        title = 'Residuals: Totals'
+        if region_data is not None:
+            title += ' - ' + region
+        if region == 'Simulation':
+            title += ' - Simulation (' + str(self.get_seed_value()) + ')'
+        axis.set_title(title)
+        axis.legend()
+        axis.set_xlim(left=0, right=self.n_days_widget.value)
+        if (y_max > 0.):
+            axis.set_ylim(top=y_max)
+            axis.set_ylim(bottom=-y_max)
             
     def plot_daily(self, axis, y_axis_type='linear', y_max=0.):
         
@@ -144,6 +189,13 @@ def get_tab(self):
                             data = self.pd_dict[filename][header].values
                             td = range(len(data))
                             axis.scatter(td, data, color=pop.color, zorder=1)
+                        else:
+                            filename = region_data[pop_name]['total']['filename']
+                            header = region_data[pop_name]['total']['header']
+                            data = self.pd_dict[filename][header].values
+                            daily_data = delta(data)
+                            td = range(len(daily_data))
+                            axis.scatter(td, daily_data, color=pop.color, zorder=1)
 
                 if region == 'Simulation':
                     if self.sim_model is not None:
@@ -179,11 +231,11 @@ def get_tab(self):
 #        tooltip='length of each step in the calculation: disabled for now', disabled=True)
 
     plot_1 = widgets.Dropdown(
-        options=['linear total', 'log total', 'linear daily', 'log daily'],
+        options=['linear total', 'log total', 'residual total', 'linear daily', 'log daily'],
         value='linear total', description='Plot #1:', tooltip='Plot on left if the second plot is not None')
     
     plot_2 = widgets.Dropdown(
-        options=['linear total', 'log total', 'linear daily', 'log daily'],
+        options=['linear total', 'log total', 'residual total', 'linear daily', 'log daily'],
         value='log total', description='Plot #2:', tooltip='Plot on the right')
     
     y_max_1 = widgets.BoundedFloatText(
@@ -214,6 +266,8 @@ def get_tab(self):
             np.random.seed(seed)
             self.sim_model.reset()
             self.sim_model.generate_data(self.n_days_widget.value)
+            # since there could be new simulation data:
+            self.new_region_opened()
         
         #self.model.parameters[self.param_dropdown.value].set_value(self.val_text_widget.value)
         #run model with current parameters
@@ -246,7 +300,10 @@ def get_tab(self):
                 y_axis_type = 'log'
             y_max = y_max_1.value
             if 'total' in plot_1.value:
-                plot_total(self, axis, y_axis_type, y_max)
+                if 'residual' in plot_1.value:
+                    plot_residual(self, axis, y_max)
+                else:
+                    plot_total(self, axis, y_axis_type, y_max)
             else:
                 plot_daily(self, axis, y_axis_type, y_max)
             plot_improvements(axis)
@@ -258,7 +315,10 @@ def get_tab(self):
                 y_axis_type = 'log'
             y_max = y_max_2.value
             if 'total' in plot_2.value:
-                plot_total(self, axis, y_axis_type, y_max)
+                if 'residual' in plot_2.value:
+                    plot_residual(self, axis, y_max)
+                else:
+                    plot_total(self, axis, y_axis_type, y_max)
             else:
                 plot_daily(self, axis, y_axis_type, y_max)
             plot_improvements(axis)
