@@ -16,3 +16,4 @@ History
 ----------------
 
 * First beta release on PyPI
+* 0.2.1 : feature update (2020-06-16)
