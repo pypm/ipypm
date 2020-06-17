@@ -13,6 +13,7 @@ from ipywidgets import AppLayout
 
 import numpy as np
 import matplotlib.pyplot as plt
+import copy
 
 from pypmca.analysis.Optimizer import Optimizer
 import pypmca.tools.table as ptt
@@ -40,6 +41,8 @@ def delta(cumul):
     diff = []
     for i in range(1, len(cumul)):
         diff.append(cumul[i] - cumul[i - 1])
+    # first daily value is repeated since val(t0-1) is unknown
+    diff.insert(0,diff[0])
     return diff
 
 
@@ -246,6 +249,9 @@ def get_tab(self):
 
     def variable_checkbox_eventhandler(change):
         # update the status of the model parameter - set bounds if appropriate
+        fit_sims_button.disabled = True
+        save_sims_button.disabled = True
+        check_trans_button.disabled = True
         output.clear_output(True)
         par_name = self.full_par_dropdown.value[2:]
         par = self.model.parameters[par_name]
@@ -330,7 +336,7 @@ def get_tab(self):
 
     self.full_par_dropdown.observe(par_dropdown_eventhandler, names='value')
 
-    def do_fit(b):
+    def get_range_list():
         date_range = self.date_range_text.value
         range_list = [0, 0]
         if date_range.find(':') > 0:
@@ -341,6 +347,10 @@ def get_tab(self):
         else:
             range_list[0] = 0
             range_list[1] = len(self.pop_data[self.full_pop_name]) - 1
+        return range_list
+
+    def do_fit(b):
+        range_list = get_range_list()
         # check if NaNs exist or if days go outside range
         nan_list = []
         range_max = range_list[1]
@@ -371,6 +381,7 @@ def get_tab(self):
                         print('Problem with bounds for variable:')
                         print(par.name)
             if status:
+                output.clear_output(True)
                 # fit the parameters:
                 self.optimizer = Optimizer(self.model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list)
                 # The optimizer cannot scan over integer variable parameters
@@ -378,7 +389,6 @@ def get_tab(self):
                 # fit with the lowest chi^2:
                 scan_dict = self.optimizer.i_fit()
                 if scan_dict is not None:
-                    output.clear_output(True)
                     # print result of scan:
                     with output:
                         print('Scan performed over integer')
@@ -395,10 +405,27 @@ def get_tab(self):
                     par_name = self.param_dropdown.value
                     par = self.model.parameters[par_name]
                     self.val_text_widget.value = par.get_value()
+                    # print and save fit statistics
+                    self.data_fit_statistics = self.optimizer.fit_statistics
+                    fit_sims_button.disabled = False
+                    check_trans_button.disabled = False
+                    with output:
+                        print('Fit results:')
+                        for par_name in self.optimizer.variable_names:
+                            print('  '+par_name,'= {0:0.3f}'.format(self.model.parameters[par_name].get_value()))
+                        print('Fit statistics:')
+                        print('  chi2_c = {0:0.1f}'.format(self.optimizer.fit_statistics['chi2_c']))
+                        print('  ndof = {0:d}'.format(self.optimizer.fit_statistics['ndof']))
+                        print('  chi2 = {0:0.1f}'.format(self.optimizer.fit_statistics['chi2']))
+                        print('  cov = {0:0.2f}'.format(self.optimizer.fit_statistics['cov']))
+                        print('  acor = {0:0.4f}'.format(self.optimizer.fit_statistics['acor']))
 
     def fix_all(b):
         full_par_names = get_par_list(self)
         changed_list = []
+        fit_sims_button.disabled = True
+        save_sims_button.disabled = True
+        check_trans_button.disabled = True
         for full_par_name in full_par_names:
             par_name = full_par_name[2:]
             prefix = full_par_name[:2]
@@ -433,6 +460,252 @@ def get_tab(self):
     fit_button.on_click(do_fit)
     fix_button.on_click(fix_all)
 
+    n_rep_widget = widgets.IntText(value=10, description='repetitions:',
+                                   continuous_update=False, disabled=False)
+
+    def fit_sims(b):
+    # Estimate the properties of the estimators, by making many several simulated samples to find the bias and covariance
+    # This presumes that the variability of the data is well represented: show the autocorrelation and chi^2
+    #
+        n_rep = n_rep_widget.value
+        self.optimizer.calc_chi2f = True
+        self.optimizer.calc_chi2s = False
+        self.optimizer.calc_sim_gof(n_rep)
+        save_sims_button.disabled = False
+
+        results = []
+        for i_rep in range(n_rep):
+            results.append(self.optimizer.opt_lists['opt'][i_rep])
+        transposed = np.array(results).T
+        corr = np.corrcoef(transposed)
+
+        plot_output.clear_output(True)
+        with plot_output:
+            print('Reporting noise parameters:')
+            pop_name = self.optimizer.population_name
+            pop = self.optimizer.model.populations[pop_name]
+            noise_pars = pop.get_report_noise()
+            buff = []
+            for noise_par_name in noise_pars:
+                if noise_par_name == 'report_noise':
+                    buff.append('enabled =' + str(noise_pars[noise_par_name]))
+                else:
+                    try:
+                        buff.append(str(noise_pars[noise_par_name])+'='+str(noise_pars[noise_par_name].get_value()))
+                    except:
+                        pass
+            print('  ',', '.join(buff))
+            for conn_name in self.optimizer.model.connectors:
+                conn = self.optimizer.model.connectors[conn_name]
+                try:
+                    dist, nbp = conn.get_distribution()
+                    if dist == 'nbinom':
+                        print('   '+conn_name+' neg binom parameter='+str(nbp.get_value()))
+                except:
+                    pass
+
+            print('Fit results from: '+str(n_rep)+' simulations')
+            for i, par_name in enumerate(self.optimizer.variable_names):
+                truth = self.model.parameters[par_name].get_value()
+                mean = np.mean(transposed[i])
+                std = np.std(transposed[i])
+                err_mean = std/np.sqrt(n_rep)
+                print('  '+par_name, ': truth = {0:0.4f} mean = {1:0.4f}, std = {2:0.4f}, err_mean = {3:0.4f}'.format(truth, mean, std, err_mean))
+            print('Correlation coefficients:')
+            for row in corr:
+                buff = '   '
+                for value in row:
+                    buff += ' {0: .3f}'.format(value)
+                print(buff)
+
+            values = {}
+            for fit_stat in self.optimizer.fit_stat_list:
+                for stat in ['chi2_c', 'chi2', 'cov', 'acor']:
+                    if stat not in values:
+                        values[stat] = []
+                    values[stat].append(fit_stat[stat])
+
+            print('Fit statistics: Data | simulations')
+            print('  chi2_c = {0:0.1f} | mean = {1:0.1f} std = {2:0.1f}, err_mean = {3:0.1f}'.format(
+                self.data_fit_statistics['chi2_c'], np.mean(values['chi2_c']), np.std(values['chi2_c']),
+                np.std(values['chi2_c'])/np.sqrt(n_rep)))
+
+            print('  ndof = {0:d} | {1:d}'.format(self.data_fit_statistics['ndof'],
+                                                  self.optimizer.fit_stat_list[0]['ndof']))
+
+            fs = {'chi2':1, 'cov':2, 'acor':4}
+            for stat in ['chi2', 'cov', 'acor']:
+                data_val = self.data_fit_statistics[stat]
+                mean = np.mean(values[stat])
+                std = np.std(values[stat])
+                err_mean = std / np.sqrt(n_rep)
+                print('  '+stat+' = {0:0.{i}f} | mean = {1:0.{i}f} std = {2:0.{i}f}, err_mean = {3:0.{i}f}'.format(
+                    data_val, mean, std, err_mean, i=fs[stat]))
+
+    def save_sims(b):
+    # Save the last standard deviations of the estimators
+        results = []
+        for result in self.optimizer.opt_lists['opt']:
+            results.append(result)
+        transposed = np.array(results).T
+
+        output.clear_output(True)
+        with output:
+            print('Saved estimator standard deviations:')
+            for i, par_name in enumerate(self.optimizer.variable_names):
+                std = np.std(transposed[i])
+                self.model.parameters[par_name].std_estimator = std
+                print('  '+par_name, ': std = {0:0.4f}'.format(std))
+
+    fit_sims_button = widgets.Button(
+        description='  Fit simulations', button_style='', tooltip='Fit simulations', icon='check',
+                    disabled=True)
+    fit_sims_button.on_click(fit_sims)
+
+    save_sims_button = widgets.Button(
+        description='  Save est std', button_style='', tooltip='Save standard deviations of estimators',
+                    disabled=True)
+    save_sims_button.on_click(save_sims)
+
+    n_day_tran_widget = widgets.IntText(value=10, description='Days back:',
+                                   continuous_update=False, disabled=False)
+
+    def check_trans(b):
+        # Look to see if there is evidence that a recent transition should be added
+        plot_output.clear_output(True)
+
+        n_day = n_day_tran_widget.value
+
+        # look at fit result with n_day removed from end
+        range_list = get_range_list()
+        range_list_reduced = copy.copy(range_list)
+        range_list_reduced[1] -= n_day
+
+        model = copy.deepcopy(self.model)
+        optimizer = Optimizer(model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list_reduced)
+        popt, pcov = optimizer.fit()
+        chi2_c_reduced = optimizer.fit_statistics['chi2_c']
+        chi2_reduced = optimizer.fit_statistics['chi2']
+        ndof_reduced = optimizer.fit_statistics['ndof']
+
+        model = copy.deepcopy(self.model)
+        optimizer = Optimizer(model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list)
+        popt, pcov = optimizer.fit()
+        chi2_c_full = optimizer.fit_statistics['chi2_c']
+        chi2_full = optimizer.fit_statistics['chi2']
+        ndof_full = optimizer.fit_statistics['ndof']
+
+        with plot_output:
+            print('Comparison of goodness of fit with/without last '+str(n_day)+' days removed:')
+            print('  ndof={0:d}, chi2 (cumul) = {1:0.1f} chi2 (daily) = {2:0.1f}'.format(
+                ndof_full, chi2_c_full, chi2_full))
+            print('  ndof={0:d}, chi2 (cumul) = {1:0.1f} chi2 (daily) = {2:0.1f}'.format(
+                ndof_reduced, chi2_c_reduced, chi2_reduced))
+
+        # copy model and add a transition in alpha
+        model_mod = copy.deepcopy(self.model)
+
+        # look for first available alpha transition
+        rate_modifier = None
+        for trans_name in model_mod.transitions:
+            if 'rate' in trans_name:
+                trans = model_mod.transitions[trans_name]
+                if not trans.enabled:
+                    rate_modifier = trans
+                    break
+        if rate_modifier is not None:
+            rate_modifier.enabled = True
+            rate_time = rate_modifier.transition_time
+            new_rate = rate_modifier.parameter_after
+
+            new_rate.set_variable(None, None)
+            rate_time.set_variable(None, None)
+            rate_time.set_min(range_list[1]-2*n_day)
+            rate_time.set_max(range_list[1]-n_day)
+
+            optimizer_mod = Optimizer(model_mod, self.full_pop_name, self.pop_data[self.full_pop_name], range_list)
+            scan_dict = optimizer_mod.i_fit()
+            with plot_output:
+                val_list = scan_dict['val_list']
+                print('Scan performed over integer variable:' + scan_dict['name'] +' range: {0:d}:{1:d}'.format(
+                    val_list[0], val_list[-1]))
+                chi2_list = scan_dict['chi2_list']
+                buff=[]
+                for chi2 in chi2_list:
+                    buff.append('{0:0.1f}'.format(chi2))
+                print(','.join(buff))
+
+                rate_time.set_fixed()
+                popt, pcov = optimizer_mod.fit()
+                print('Possible rate transition:')
+                print('  '+rate_time.name+'='+str(rate_time.get_value()))
+                print('  '+new_rate.name+'= {0:0.4f}'.format(new_rate.get_value()))
+
+                chi2_c_full = optimizer_mod.fit_statistics['chi2_c']
+                chi2_full = optimizer_mod.fit_statistics['chi2']
+                ndof_full = optimizer_mod.fit_statistics['ndof']
+                print('  ndof={0:d}, chi2 (cumul) = {1:0.1f} chi2 (daily) = {2:0.1f}'.format(
+                    ndof_full, chi2_c_full, chi2_full))
+
+            rate_modifier.enabled = False
+
+        # look for first available outbreak
+        model_mod = copy.deepcopy(self.model)
+        injector = None
+        duplicate = False
+        for trans_name in model_mod.transitions:
+            if 'outbreak' in trans_name:
+                trans = model_mod.transitions[trans_name]
+                if not trans.enabled and injector is None:
+                    injector = trans
+                elif trans.enabled:
+                    time = trans.transition_time.get_value()
+                    if time >= range_list[1] - 2 * n_day - 4:
+                        duplicate = True
+                        with plot_output:
+                            print('An injector already exists in the time range under consideration')
+                            print('  '+str(trans)+' time ='+str(time))
+
+        if injector is not None and not duplicate:
+            injector.enabled = True
+            injector_time = injector.transition_time
+            injector_number = injector.injection
+
+            injector_number.set_variable(None, None)
+            injector_time.set_variable(None, None)
+            injector_time.set_min(range_list[1] - 2 * n_day - 4)
+            injector_time.set_max(range_list[1] - n_day - 4)
+
+            optimizer_mod = Optimizer(model_mod, self.full_pop_name, self.pop_data[self.full_pop_name],
+                                      range_list)
+            scan_dict = optimizer_mod.i_fit()
+            with plot_output:
+                val_list = scan_dict['val_list']
+                print('Scan performed over integer variable:' + scan_dict['name'] +' range: {0:d}:{1:d}'.format(
+                    val_list[0], val_list[-1]))
+                chi2_list = scan_dict['chi2_list']
+                buff=[]
+                for chi2 in chi2_list:
+                    buff.append('{0:0.1f}'.format(chi2))
+                print(','.join(buff))
+
+                injector_time.set_fixed()
+                popt, pcov = optimizer_mod.fit()
+                print('Possible outbreak:')
+                print('  ' + injector_time.name + '=' + str(injector_time.get_value()))
+                print('  ' + injector_number.name + '= {0:0.1f}'.format(injector_number.get_value()))
+
+                chi2_c_full = optimizer_mod.fit_statistics['chi2_c']
+                chi2_full = optimizer_mod.fit_statistics['chi2']
+                ndof_full = optimizer_mod.fit_statistics['ndof']
+                print('  ndof={0:d}, chi2 (cumul) = {1:0.1f} chi2 (daily) = {2:0.1f}'.format(
+                    ndof_full, chi2_c_full, chi2_full))
+
+    check_trans_button = widgets.Button(
+        description='Check transitions', button_style='', tooltip='Look for evidence of transitions',
+                    disabled=True)
+    check_trans_button.on_click(check_trans)
+
     def show_vars(b):
         plot_output.clear_output(True)
 
@@ -461,13 +734,16 @@ def get_tab(self):
                              self.full_par_dropdown,
                              variable_checkbox,
                              variable_bound_text,
-                             widgets.HBox([fit_button, fix_button])
+                             widgets.HBox([fit_button, fix_button]),
+                             n_rep_widget,
+                             widgets.HBox([fit_sims_button, save_sims_button]),
+                             n_day_tran_widget, check_trans_button
                              ])
 
     return AppLayout(header=header_hbox,
                      left_sidebar=left_box,
                      center=output,
-                     right_sidebar=hspace,
+                     right_sidebar=None,
+                     pane_widths=[2,2,0],
                      footer=plot_output,
-                     pane_widths=[2, 2, 2],
                      pane_heights=[1, 2, '460px'])
