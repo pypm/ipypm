@@ -52,6 +52,8 @@ def get_tab(self):
         diff = []
         for i in range(1, len(cumul)):
             diff.append(cumul[i] - cumul[i - 1])
+        # first daily value is repeated since val(t0-1) is unknown
+        diff.insert(0, diff[0])
         return diff
 
     def plot_total(self, model, sim_model, region, axis, y_axis_type='linear', y_max=0., scale=1.):
@@ -126,7 +128,7 @@ def get_tab(self):
                     if hasattr(sim_pop, 'show_sim') and sim_pop.show_sim:
                         sim_daily = delta(sim_pop.history)
                         st = range(len(sim_daily))
-                        axis.scatter(st, np.array(sim_daily.history)*scale, color=sim_pop.color)
+                        axis.scatter(st, np.array(sim_daily)*scale, color=sim_pop.color)
 
         title = 'Daily'
         if region_data is not None:

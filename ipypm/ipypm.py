@@ -57,6 +57,7 @@ class ipypm:
         self.region_model_folders = None
         self.model_filenames = None
         self.region_data_folders = None
+        self.data_fit_statistics = None
 
         # widgets shared on more than one tab:
 
@@ -69,7 +70,7 @@ class ipypm:
         self.open_model_output = widgets.Output(layout={'width': '60%'})
         self.open_data_output = widgets.Output()
         self.region_data_output = widgets.Output(layout={'width': '60%'})
-        self.region_dropdown = widgets.Dropdown(description='Region data:')
+        self.region_dropdown = widgets.Dropdown(description='Region data:', options=['None', 'Simulation'])
         n_days = (date.today() - self.model_t0.value).days
         n_days = n_days - n_days % 10 + 10
         self.n_days_widget = widgets.BoundedIntText(
@@ -98,6 +99,7 @@ class ipypm:
     def new_data_opened(self):
         explore_tab.new_data_opened(self)
         compare_tab.new_data_opened(self)
+        analyze_tab.new_region_opened(self)
 
     def new_region_opened(self):
         analyze_tab.new_region_opened(self)

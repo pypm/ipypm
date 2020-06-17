@@ -40,12 +40,6 @@ def get_par_list(self):
     
     return full_par_names_variable+full_par_names_fixed
 
-def delta(cumul):
-    diff = []
-    for i in range(1,len(cumul)):
-        diff.append(cumul[i] - cumul[i-1])
-    return diff
-
 def get_tab(self):
     
     output = widgets.Output()
@@ -60,7 +54,7 @@ def get_tab(self):
         
         for pop_name in self.model.populations:
             pop = self.model.populations[pop_name]
-            if not pop.hidden:
+            if (not pop.hidden) and pop.show_sim:
                 t = range(len(pop.history))
                 axis.plot(t, pop.history, lw=2, label=pop_name, color=pop.color, zorder=2)
 
@@ -367,6 +361,7 @@ def get_tab(self):
         output.clear_output(True)
         n_rep = n_rep_widget.value
         self.optimizer.calc_chi2f = chi2f_checkbox.value
+        self.optimizer.calc_chi2s = True
         self.optimizer.calc_sim_gof(n_rep)
         with output:
             print('Simulated goodness of fit distribution calculated')
