@@ -351,9 +351,16 @@ def get_tab(self):
     def do_auto_cov(b):
         output.clear_output(True)
         n_rep = n_rep_widget.value
-        self.optimizer.calc_auto_covariance(n_rep)
-        with output:
-            print('Autocovariance calculated')
+        n_points = self.optimizer.data_range[1] - self.optimizer.data_range[0]
+        if n_rep < 2*n_points:
+            with output:
+                print('Not enough repititions to calculate the')
+                print('autocovariance. Should be more than double the')
+                print('number of data points.')
+        else:
+            self.optimizer.calc_auto_covariance(n_rep)
+            with output:
+                print('Autocovariance calculated')
                 
     auto_cov_button.on_click(do_auto_cov)
 
