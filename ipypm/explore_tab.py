@@ -78,6 +78,12 @@ def get_tab(self):
         # first daily value is repeated since val(t0-1) is unknown
         diff.insert(0, diff[0])
         return diff
+
+    def delta_weekly(cumul):
+        diff = []
+        for i in range(7,len(cumul),7):
+            diff.append((cumul[i] - cumul[i-7])/7.)
+        return diff
     
     def plot_total(self, axis, y_axis_type='linear', y_max=0.):
 
@@ -195,7 +201,10 @@ def get_tab(self):
                             data = self.pd_dict[filename][header].values
                             daily_data = delta(data)
                             td = range(len(daily_data))
-                            axis.scatter(td, daily_data, color=pop.color, zorder=1)
+                            axis.scatter(td, daily_data, color=pop.color, s=10, zorder=1)
+                            weekly_data = delta_weekly(data)
+                            tw = [3.5 + i*7 for i in range(len(weekly_data))]
+                            axis.scatter(tw, weekly_data, color=pop.color, marker='*', s=100, zorder=1)
 
                 if region == 'Simulation':
                     if self.sim_model is not None:
