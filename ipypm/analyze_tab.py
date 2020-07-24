@@ -477,7 +477,9 @@ def get_tab(self):
         for i_rep in range(n_rep):
             results.append(self.optimizer.opt_lists['opt'][i_rep])
         transposed = np.array(results).T
-        corr = np.corrcoef(transposed)
+        corr = None
+        if len(self.optimizer.variable_names) > 1:
+            corr = np.corrcoef(transposed)
 
         plot_output.clear_output(True)
         with plot_output:
@@ -511,12 +513,13 @@ def get_tab(self):
                 std = np.std(transposed[i])
                 err_mean = std/np.sqrt(n_rep)
                 print('  '+par_name, ': truth = {0:0.4f} mean = {1:0.4f}, std = {2:0.4f}, err_mean = {3:0.4f}'.format(truth, mean, std, err_mean))
-            print('Correlation coefficients:')
-            for row in corr:
-                buff = '   '
-                for value in row:
-                    buff += ' {0: .3f}'.format(value)
-                print(buff)
+            if corr is not None:
+                print('Correlation coefficients:')
+                for row in corr:
+                    buff = '   '
+                    for value in row:
+                        buff += ' {0: .3f}'.format(value)
+                    print(buff)
 
             values = {}
             for fit_stat in self.optimizer.fit_stat_list:
@@ -736,8 +739,8 @@ def get_tab(self):
                              variable_bound_text,
                              widgets.HBox([fit_button, fix_button]),
                              n_rep_widget,
-                             widgets.HBox([fit_sims_button, save_sims_button]),
-                             n_day_tran_widget, check_trans_button
+                             widgets.HBox([fit_sims_button, save_sims_button])
+#                             n_day_tran_widget, check_trans_button
                              ])
 
     return AppLayout(header=header_hbox,
