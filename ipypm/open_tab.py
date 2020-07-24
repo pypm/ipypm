@@ -18,18 +18,21 @@ import imp
 import pandas as pd
 
 
-def get_tab(self):
-    open_tab = widgets.Tab()
-    model_tab_net = get_model_tab_net(self)
-    model_tab_local = get_model_tab_local(self)
-    data_tab_net = get_data_tab_net(self)
-    data_tab_local = get_data_tab_local(self)
-
-    open_tab.children = [model_tab_net, model_tab_local, data_tab_net, data_tab_local]
-    open_tab.set_title(0, 'Model - network')
-    open_tab.set_title(1, 'Model - local')
-    open_tab.set_title(2, 'Data - network')
-    open_tab.set_title(3, 'Data - local')
+def get_tab(self,sub_tabs):
+    if sub_tabs == 'model':
+        open_tab = widgets.Tab()
+        model_tab_net = get_model_tab_net(self)
+        model_tab_local = get_model_tab_local(self)
+        open_tab.children = [model_tab_net, model_tab_local]
+        open_tab.set_title(0, 'Model - network')
+        open_tab.set_title(1, 'Model - local')
+    elif sub_tabs == 'all':
+        open_tab = self.open_tab_widget
+        data_tab_net = get_data_tab_net(self)
+        data_tab_local = get_data_tab_local(self)
+        open_tab.children = [open_tab.children[0], open_tab.children[1], data_tab_net,data_tab_local]
+        open_tab.set_title(2, 'Data - network')
+        open_tab.set_title(3, 'Data - local')
 
     return open_tab
 

@@ -14,7 +14,7 @@ from ipypm import open_tab, settings_tab, explore_tab, analyze_tab, mcmc_tab, \
 def init_tab(self):
 
     self.main_tab_widget = widgets.Tab()
-    self.open_tab_widget = open_tab.get_tab(self)
+    self.open_tab_widget = open_tab.get_tab(self,'model')
     self.edit_tab_widget = edit_tab.get_tab(self)
     self.main_tab_widget.children = [self.open_tab_widget, self.edit_tab_widget]
     self.main_tab_widget.set_title(0, 'Open')
@@ -25,6 +25,7 @@ def all_tabs(self):
     # adds more children, only if model exists
 
     if self.model is not None:
+        self.open_tab_widget = open_tab.get_tab(self, 'all')
         settings_t = settings_tab.get_tab(self)
         explore_t = explore_tab.get_tab(self)
         analyze_t = analyze_tab.get_tab(self)
