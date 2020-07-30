@@ -219,6 +219,11 @@ def get_tab(self):
                                         description='Fit days:', disabled=False,
                                         continuous_update=False)
 
+    self.cumul_reset_checkbox = widgets.Checkbox(value=self.cumul_reset, description='start cumulative at 0', disabled=False)
+    def cumul_reset_eventhandler(change):
+        self.cumul_reset = self.cumul_reset_checkbox.value
+    self.cumul_reset_checkbox.observe(cumul_reset_eventhandler, names='value')
+
     full_par_names = get_par_list(self)
     self.full_par_dropdown = widgets.Dropdown(options=full_par_names, description='Parameter:', disabled=False)
 
@@ -383,7 +388,8 @@ def get_tab(self):
             if status:
                 output.clear_output(True)
                 # fit the parameters:
-                self.optimizer = Optimizer(self.model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list)
+                self.optimizer = Optimizer(self.model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list,
+                                           cumul_reset=self.cumul_reset)
                 # The optimizer cannot scan over integer variable parameters
                 # Strip those out and do a scan over them to find the
                 # fit with the lowest chi^2:
@@ -585,14 +591,14 @@ def get_tab(self):
         range_list_reduced[1] -= n_day
 
         model = copy.deepcopy(self.model)
-        optimizer = Optimizer(model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list_reduced)
+        optimizer = Optimizer(model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list_reduced, cumul_reset=self.cumul_reset)
         popt, pcov = optimizer.fit()
         chi2_c_reduced = optimizer.fit_statistics['chi2_c']
         chi2_reduced = optimizer.fit_statistics['chi2']
         ndof_reduced = optimizer.fit_statistics['ndof']
 
         model = copy.deepcopy(self.model)
-        optimizer = Optimizer(model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list)
+        optimizer = Optimizer(model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list, cumul_reset=self.cumul_reset)
         popt, pcov = optimizer.fit()
         chi2_c_full = optimizer.fit_statistics['chi2_c']
         chi2_full = optimizer.fit_statistics['chi2']
@@ -626,7 +632,7 @@ def get_tab(self):
             rate_time.set_min(range_list[1]-2*n_day)
             rate_time.set_max(range_list[1]-n_day)
 
-            optimizer_mod = Optimizer(model_mod, self.full_pop_name, self.pop_data[self.full_pop_name], range_list)
+            optimizer_mod = Optimizer(model_mod, self.full_pop_name, self.pop_data[self.full_pop_name], range_list, cumul_reset=self.cumul_reset)
             scan_dict = optimizer_mod.i_fit()
             with plot_output:
                 val_list = scan_dict['val_list']
@@ -680,7 +686,7 @@ def get_tab(self):
             injector_time.set_max(range_list[1] - n_day - 4)
 
             optimizer_mod = Optimizer(model_mod, self.full_pop_name, self.pop_data[self.full_pop_name],
-                                      range_list)
+                                      range_list, cumul_reset=self.cumul_reset)
             scan_dict = optimizer_mod.i_fit()
             with plot_output:
                 val_list = scan_dict['val_list']
@@ -734,6 +740,7 @@ def get_tab(self):
 
     left_box = widgets.VBox([self.pop_dropdown,
                              self.date_range_text,
+                             self.cumul_reset_checkbox,
                              self.full_par_dropdown,
                              variable_checkbox,
                              variable_bound_text,

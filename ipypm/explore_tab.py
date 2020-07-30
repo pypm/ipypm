@@ -84,7 +84,16 @@ def get_tab(self):
         for i in range(7,len(cumul),7):
             diff.append((cumul[i] - cumul[i-7])/7.)
         return diff
-    
+
+    def accum_weekly(daily):
+        accum = []
+        for i in range(7,len(daily),7):
+            sum = 0
+            for j in range(i-7,i):
+                sum += daily[i]
+            accum.append(sum/7.)
+        return accum
+
     def plot_total(self, axis, y_axis_type='linear', y_max=0.):
 
         region = self.region_dropdown.value        
@@ -194,7 +203,10 @@ def get_tab(self):
                             header = region_data[pop_name]['daily']['header']
                             data = self.pd_dict[filename][header].values
                             td = range(len(data))
-                            axis.scatter(td, data, color=pop.color, zorder=1)
+                            axis.scatter(td, data, color=pop.color, s=10, zorder=1)
+                            weekly_data = accum_weekly(data)
+                            tw = [3.5 + i*7 for i in range(len(weekly_data))]
+                            axis.scatter(tw, weekly_data, color=pop.color, marker='*', s=100, zorder=1)
                         else:
                             filename = region_data[pop_name]['total']['filename']
                             header = region_data[pop_name]['total']['header']
@@ -212,7 +224,10 @@ def get_tab(self):
                         if hasattr(sim_pop,'show_sim') and sim_pop.show_sim:
                             sim_daily = delta(sim_pop.history)
                             st = range(len(sim_daily))
-                            axis.scatter(st, sim_daily, color=sim_pop.color, zorder=1)
+                            axis.scatter(st, sim_daily, color=sim_pop.color, s=10, zorder=1)
+                            weekly_data = delta_weekly(sim_pop.history)
+                            tw = [3.5 + i * 7 for i in range(len(weekly_data))]
+                            axis.scatter(tw, weekly_data, color=pop.color, marker='*', s=100, zorder=1)
         
         title = 'Daily'
         if region_data is not None:

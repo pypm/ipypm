@@ -58,6 +58,8 @@ class ipypm:
         self.model_filenames = None
         self.region_data_folders = None
         self.data_fit_statistics = None
+        self.cumul_reset = False
+        self.cumul_reset_checkbox = None
 
         # widgets shared on more than one tab:
 
