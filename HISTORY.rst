@@ -19,3 +19,4 @@ History
 * 0.2.1 : feature update (2020-06-16)
 * 0.2.2 : minor fixes (2020-07-24)
 * 0.2.3 : allow cumulative to start from zero (2020-07-30)
+* 0.2.4 : fix analyze plot when cumulative reset selected (2020-07-31)
