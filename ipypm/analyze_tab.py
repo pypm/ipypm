@@ -121,13 +121,24 @@ def get_tab(self):
         pop_name = self.full_pop_name[6:]
         pop = self.model.populations[pop_name]
 
-        t = range(len(pop.history))
-        axis.plot(t, pop.history, lw=2, label=pop_name, color=pop.color)
+        model_data = pop.history
+        t = range(len(model_data))
+        if self.cumul_reset:
+            cumul_offset = pop.history[range_list[0]]
+            model_data = [pop.history[i] - cumul_offset for i in range(range_list[0],range_list[1])]
+            t = range(range_list[0], range_list[1])
+
+        axis.plot(t, model_data, lw=2, label=pop_name, color=pop.color)
 
         td = range(range_list[0], range_list[1])
         data = []
-        for i in td:
-            data.append(self.pop_data[self.full_pop_name][i])
+        if self.cumul_reset:
+            cumul_offset = self.pop_data[self.full_pop_name][range_list[0]]
+            for i in td:
+                data.append(self.pop_data[self.full_pop_name][i] - cumul_offset)
+        else:
+            for i in td:
+                data.append(self.pop_data[self.full_pop_name][i])
         axis.scatter(td, data, color=pop.color)
 
         title = self.full_pop_name
