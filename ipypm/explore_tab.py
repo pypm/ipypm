@@ -90,7 +90,7 @@ def get_tab(self):
         for i in range(7,len(daily),7):
             sum = 0
             for j in range(i-7,i):
-                sum += daily[i]
+                sum += daily[j]
             accum.append(sum/7.)
         return accum
 
