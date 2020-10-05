@@ -21,3 +21,4 @@ History
 * 0.2.3 : allow cumulative to start from zero (2020-07-30)
 * 0.2.4 : fix analyze plot when cumulative reset selected (2020-07-31)
 * 0.2.5 : minor bug fix (2020-09-11)
+* 0.2.6 : increase max days to 500 (2020-10-4)
