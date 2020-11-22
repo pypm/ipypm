@@ -96,6 +96,8 @@ def get_tab(self):
 
     def plot_total(self, axis, y_axis_type='linear', y_max=0.):
 
+        start_day = (t0_widget.value - date(2020,3,1)).days
+
         region = self.region_dropdown.value        
         region_data = None
         if self.region_dropdown.value != 'None' and self.region_dropdown.value != 'Simulation':
@@ -105,7 +107,7 @@ def get_tab(self):
             pop = self.model.populations[pop_name]
             if not pop.hidden:
                 t = range(len(pop.history))
-                axis.plot(t, pop.history, lw=2, label=pop_name, color=pop.color, zorder=2)
+                axis.plot(t[start_day:], pop.history[start_day:], lw=2, label=pop_name, color=pop.color, zorder=2)
                 
                 if region_data is not None:
                     if pop_name in region_data:
@@ -114,14 +116,14 @@ def get_tab(self):
                             header = region_data[pop_name]['total']['header']
                             data = self.pd_dict[filename][header].values
                             td = range(len(data))
-                            axis.scatter(td, data, color=pop.color, zorder=1)
+                            axis.scatter(td[start_day:], data[start_day:], color=pop.color, zorder=1)
 
                 if region == 'Simulation':
                     if self.sim_model is not None:
                         sim_pop = self.sim_model.populations[pop_name]
                         if hasattr(sim_pop,'show_sim') and sim_pop.show_sim:
                             st = range(len(sim_pop.history))
-                            axis.scatter(st, sim_pop.history, color=sim_pop.color, zorder=1)
+                            axis.scatter(st[start_day:], sim_pop.history[start_day:], color=sim_pop.color, zorder=1)
 
         title = 'Totals'
         if region_data is not None:
@@ -131,7 +133,7 @@ def get_tab(self):
         axis.set_title(title)
         axis.legend()
         axis.set_yscale(y_axis_type)
-        axis.set_xlim(left=0, right=self.n_days_widget.value)
+        axis.set_xlim(left=start_day, right=self.n_days_widget.value)
         if y_axis_type == 'log':
             axis.set_ylim(bottom=3)
         else:
@@ -140,6 +142,8 @@ def get_tab(self):
             axis.set_ylim(top=y_max)
 
     def plot_residual(self, axis, y_max=0.):
+
+        start_day = (t0_widget.value - date(2020, 3, 1)).days
 
         region = self.region_dropdown.value
         region_data = None
@@ -160,7 +164,7 @@ def get_tab(self):
                             data = self.pd_dict[filename][header].values
                             td = range(len(data))
                             residual = [data[i]-pop.history[i] for i in td]
-                            axis.scatter(td, residual, label=pop_name, color=pop.color, zorder=1)
+                            axis.scatter(td[start_day:], residual[start_day:], label=pop_name, color=pop.color, zorder=1)
 
                 if region == 'Simulation':
                     if self.sim_model is not None:
@@ -168,7 +172,7 @@ def get_tab(self):
                         if hasattr(sim_pop, 'show_sim') and sim_pop.show_sim:
                             st = range(len(sim_pop.history))
                             residual = [sim_pop.history[i] - pop.history[i] for i in st]
-                            axis.scatter(st, residual, label=pop_name, color=sim_pop.color, zorder=1)
+                            axis.scatter(st[start_day:], residual[start_day:], label=pop_name, color=sim_pop.color, zorder=1)
 
         title = 'Residuals: Totals'
         if region_data is not None:
@@ -183,6 +187,8 @@ def get_tab(self):
             axis.set_ylim(bottom=-y_max)
             
     def plot_daily(self, axis, y_axis_type='linear', y_max=0.):
+
+        start_day = (t0_widget.value - date(2020, 3, 1)).days
         
         region = self.region_dropdown.value        
         region_data = None
@@ -194,7 +200,7 @@ def get_tab(self):
             if not pop.hidden and pop.monotonic:
                 daily = delta(pop.history)
                 t = range(len(daily))
-                axis.step(t, daily, lw=2, label=pop_name, color=pop.color, zorder=2)
+                axis.step(t[start_day:], daily[start_day:], lw=2, label=pop_name, color=pop.color, zorder=2)
                 
                 if region_data is not None:
                     if pop_name in region_data:
@@ -203,9 +209,9 @@ def get_tab(self):
                             header = region_data[pop_name]['daily']['header']
                             data = self.pd_dict[filename][header].values
                             td = range(len(data))
-                            axis.scatter(td, data, color=pop.color, s=10, zorder=1)
-                            weekly_data = accum_weekly(data)
-                            tw = [3.5 + i*7 for i in range(len(weekly_data))]
+                            axis.scatter(td[start_day:], data[start_day:], color=pop.color, s=10, zorder=1)
+                            weekly_data = accum_weekly(data[start_day:])
+                            tw = [start_day + 3.5 + i*7 for i in range(len(weekly_data))]
                             axis.scatter(tw, weekly_data, color=pop.color, marker='*', s=100, zorder=1)
                         else:
                             filename = region_data[pop_name]['total']['filename']
@@ -213,9 +219,9 @@ def get_tab(self):
                             data = self.pd_dict[filename][header].values
                             daily_data = delta(data)
                             td = range(len(daily_data))
-                            axis.scatter(td, daily_data, color=pop.color, s=10, zorder=1)
-                            weekly_data = delta_weekly(data)
-                            tw = [3.5 + i*7 for i in range(len(weekly_data))]
+                            axis.scatter(td[start_day:], daily_data[start_day:], color=pop.color, s=10, zorder=1)
+                            weekly_data = delta_weekly(data[start_day:])
+                            tw = [start_day + 3.5 + i*7 for i in range(len(weekly_data))]
                             axis.scatter(tw, weekly_data, color=pop.color, marker='*', s=100, zorder=1)
 
                 if region == 'Simulation':
@@ -224,9 +230,9 @@ def get_tab(self):
                         if hasattr(sim_pop,'show_sim') and sim_pop.show_sim:
                             sim_daily = delta(sim_pop.history)
                             st = range(len(sim_daily))
-                            axis.scatter(st, sim_daily, color=sim_pop.color, s=10, zorder=1)
-                            weekly_data = delta_weekly(sim_pop.history)
-                            tw = [3.5 + i * 7 for i in range(len(weekly_data))]
+                            axis.scatter(st[start_day:], sim_daily[start_day:], color=sim_pop.color, s=10, zorder=1)
+                            weekly_data = delta_weekly(sim_pop.history[start_day:])
+                            tw = [start_day + 3.5 + i * 7 for i in range(len(weekly_data))]
                             axis.scatter(tw, weekly_data, color=pop.color, marker='*', s=100, zorder=1)
         
         title = 'Daily'
@@ -237,7 +243,7 @@ def get_tab(self):
         axis.set_title(title)
         axis.legend()
         axis.set_yscale(y_axis_type)
-        axis.set_xlim(left=0, right=self.n_days_widget.value)
+        axis.set_xlim(left=start_day, right=self.n_days_widget.value)
         if y_axis_type == 'log':
             axis.set_ylim(bottom=3)
         else:
@@ -247,7 +253,7 @@ def get_tab(self):
 
 # the t0 information needs to be propagated correctly before enabling this widget:
     t0_widget = widgets.DatePicker(
-        description='t_0:', value = date(2020,3,1), tooltip='Defines day 0 on plots', disabled=True)
+        description='t_0:', value = date(2020,3,1), tooltip='Defines day 0 on plots', disabled=False)
  
 # Look into this later:
 #    time_step_widget = widgets.BoundedFloatText(
@@ -351,7 +357,7 @@ def get_tab(self):
             plt.show()
             
     def plot_improvements(axis):
-        t0text = t0_widget.value.strftime("%b %d")
+        t0text = date(2020,3,1).strftime("%b %d")
         axis.set_xlabel('days since '+t0text,
                            horizontalalignment='right', position = (1.,-0.1))
         axis.set_ylabel('Number of people')
@@ -360,29 +366,53 @@ def get_tab(self):
         axis.text(0.01, 1.02, 'pyPM.ca', transform=axis.transAxes, fontsize=10,
                      verticalalignment='bottom', bbox=pypm_props)
 
+        start_day = (t0_widget.value - date(2020, 3, 1)).days
+
         # indicate times of transitions
         x_transform = transforms.blended_transform_factory(axis.transData, axis.transAxes)
         trans_list, trans_enabled = get_transitions_lists(self)
         i = 0
-        last_mod = 0
         n_mod = 0
+        # multiple bands if multiple parameters to be changed
+        prefix = 8
+        tran_dict = {}
+        for tran_name in trans_enabled:
+            tran = self.model.transitions[tran_name]
+            if hasattr(tran, 'parameter_after'):
+                if tran_name[0:prefix] not in tran_dict:
+                    tran_dict[tran_name[0:prefix]] = {'y_min': 0., 'y_max': 1., 'n_mod':0, 'last_mod':0}
+
+        n_bands = len(tran_dict)
+        if n_bands > 1.:
+            d_band = 1./n_bands
+            low = 0.
+            for key in tran_dict:
+                tran_dict[key]['y_min'] = low
+                tran_dict[key]['y_max'] = low + d_band
+                low += d_band
+
         for tran_name in trans_enabled:
             tran = self.model.transitions[tran_name]
             if hasattr(tran,'parameter_after'):
                 # a modifier changes a parameter - use a color band to distinguish regions
-                n_mod += 1
+                tran_dict[tran_name[0:prefix]]['n_mod'] += 1
+                n_mod = tran_dict[tran_name[0:prefix]]['n_mod']
+                last_mod = tran_dict[tran_name[0:prefix]]['last_mod']
+                y_min = tran_dict[tran_name[0:prefix]]['y_min']
+                y_max = tran_dict[tran_name[0:prefix]]['y_max']
                 axis.axvspan(last_mod, tran.trigger_step, facecolor='papayawhip', 
-                             edgecolor='tan', alpha=0.2*(n_mod+1), zorder=0)
-                last_mod = tran.trigger_step
+                             edgecolor='tan', alpha=0.1*(n_mod+1), zorder=0, ymin=y_min, ymax=y_max)
+                tran_dict[tran_name[0:prefix]]['last_mod'] = tran.trigger_step
             else:
-                # an injector adds population - use an arrow to show times (delayed by a week?)
+                # an injector adds population - use an circle to show times (delayed by a week?)
                 i+=1
                 x_text = 'X'+str(i)
-                x_props = dict(boxstyle='rarrow', facecolor='red', alpha=0.3)
+                x_props = dict(boxstyle='circle', facecolor='red', alpha=0.3)
                 # a hack to put it in the right place (since a 1 week delay - need to get 7 from somewhere)
                 delay = 7./self.model.get_time_step()
-                axis.text(tran.trigger_step+delay, -0.1, x_text , transform=x_transform, fontsize=10,
-                          verticalalignment='top', horizontalalignment='center', bbox=x_props)
+                if tran.trigger_step+delay > start_day:
+                    axis.text(tran.trigger_step+delay, -0.1, x_text , transform=x_transform, fontsize=10,
+                              verticalalignment='top', horizontalalignment='center', bbox=x_props)
             
     def reset_parameters(b):
         output.clear_output(True)
