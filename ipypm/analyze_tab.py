@@ -104,7 +104,12 @@ def new_region_opened(self):
     # update the population chooser
     full_pop_names = get_pop_list(self)
     self.pop_dropdown.options = full_pop_names
+    if 'total reported' in full_pop_names:
+        self.pop_dropdown.value = 'total reported'
     self.full_pop_name = self.pop_dropdown.value
+    # update list of visible parameters in case it has changed
+    full_par_names = get_par_list(self)
+    self.full_par_dropdown.options = full_par_names
 
 
 def get_tab(self):
@@ -268,6 +273,8 @@ def get_tab(self):
         fit_sims_button.disabled = True
         save_sims_button.disabled = True
         check_trans_button.disabled = True
+        mod_trans_button.disabled = True
+        apply_mod_trans_button.disabled = True
         output.clear_output(True)
         par_name = self.full_par_dropdown.value[2:]
         par = self.model.parameters[par_name]
@@ -426,6 +433,7 @@ def get_tab(self):
                     self.data_fit_statistics = self.optimizer.fit_statistics
                     fit_sims_button.disabled = False
                     check_trans_button.disabled = False
+                    mod_trans_button.disabled = False
                     with output:
                         print('Fit results:')
                         for par_name in self.optimizer.variable_names:
@@ -443,6 +451,7 @@ def get_tab(self):
         fit_sims_button.disabled = True
         save_sims_button.disabled = True
         check_trans_button.disabled = True
+        mod_trans_button.disabled = True
         for full_par_name in full_par_names:
             par_name = full_par_name[2:]
             prefix = full_par_name[:2]
@@ -589,6 +598,69 @@ def get_tab(self):
 
     n_day_tran_widget = widgets.IntText(value=10, description='Days back:',
                                    continuous_update=False, disabled=False)
+
+    def mod_trans_date(b):
+        # calculate changes to final transition rate if transition date is adjusted by +/- 2 days
+        output.clear_output(True)
+
+        # find last alpha transition
+        last_transition = {'trans_date':0}
+        for trans_name in self.model.transitions:
+            if 'rate' in trans_name:
+                trans = self.model.transitions[trans_name]
+                if trans.enabled:
+                    trans_date = trans.transition_time.get_value()
+                    if trans_date > last_transition['trans_date']:
+                        last_transition['trans_date'] = trans_date
+                        last_transition['trans_name'] = trans_name
+                        last_transition['alpha_name'] = str(trans.parameter_after)
+
+        range_list = get_range_list()
+        delta_days = [-2, +2]
+        mod_alphas = []
+        for delta_day in delta_days:
+            model = copy.deepcopy(self.model)
+            new_date = last_transition['trans_date'] + delta_day
+            model.transitions[last_transition['trans_name']].transition_time.set_value(new_date)
+            optimizer = Optimizer(model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list,
+                                  cumul_reset=self.cumul_reset)
+            popt, pcov = optimizer.fit()
+            mod_alpha = model.parameters[last_transition['alpha_name']].get_value()
+            mod_alphas.append(mod_alpha)
+
+        # while the following should be divided by 2, leave as is to account for larger delta_day possibility
+        self.mod_alphas_std = np.abs(mod_alphas[0] - mod_alphas[1])
+        self.mod_last_transition = last_transition
+        apply_mod_trans_button.disabled = False
+
+        with output:
+            print('Final transition:',last_transition['trans_name'],'on day',last_transition['trans_date'])
+            print('alpha values: \n  nom = {0:0.4f} +/- {1:0.4f} \n  {2:+d} days = {3:0.4f} \n  {4:+d} days = {5:0.4f}'.format(
+                self.model.parameters[last_transition['alpha_name']].get_value(),
+                self.model.parameters[last_transition['alpha_name']].std_estimator,
+                delta_days[0], mod_alphas[0], delta_days[1], mod_alphas[1]
+            ))
+            print('additional error to include in final alpha: {0:0.4f}'.format(self.mod_alphas_std))
+
+    def apply_mod_trans_date(b):
+        last_transition = self.mod_last_transition
+        current_std = self.model.parameters[last_transition['alpha_name']].std_estimator
+        new_std = np.sqrt(current_std**2 + self.mod_alphas_std**2)
+        self.model.parameters[last_transition['alpha_name']].std_estimator = new_std
+        apply_mod_trans_button.disabled = True
+        with output:
+            print('\nAdditional error applied to',last_transition['alpha_name'],':')
+            print('was: {0:0.4f}, now: {1:0.4f}'.format(current_std,new_std))
+
+    mod_trans_button = widgets.Button(
+        description='Modify trans dates', button_style='', tooltip='Evaluate error from trans date',
+                    disabled=True)
+    mod_trans_button.on_click(mod_trans_date)
+
+    apply_mod_trans_button = widgets.Button(
+        description='Apply additional error', button_style='', tooltip='Apply error from trans date',
+                    disabled=True)
+    apply_mod_trans_button.on_click(apply_mod_trans_date)
 
     def check_trans(b):
         # Look to see if there is evidence that a recent transition should be added
@@ -757,7 +829,8 @@ def get_tab(self):
                              variable_bound_text,
                              widgets.HBox([fit_button, fix_button]),
                              n_rep_widget,
-                             widgets.HBox([fit_sims_button, save_sims_button])
+                             widgets.HBox([fit_sims_button, save_sims_button]),
+                             widgets.HBox([mod_trans_button, apply_mod_trans_button])
 #                             n_day_tran_widget, check_trans_button
                              ])
 
