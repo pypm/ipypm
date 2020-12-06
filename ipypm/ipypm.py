@@ -60,6 +60,8 @@ class ipypm:
         self.data_fit_statistics = None
         self.cumul_reset = False
         self.cumul_reset_checkbox = None
+        self.mod_last_transition = None
+        self.mod_alphas_std = None
 
         # widgets shared on more than one tab:
 
@@ -101,6 +103,11 @@ class ipypm:
     def new_data_opened(self):
         explore_tab.new_data_opened(self)
         compare_tab.new_data_opened(self)
+        analyze_tab.new_region_opened(self)
+
+    # update transition chooser etc
+    def new_model_opened(self):
+        explore_tab.new_model_opened(self)
         analyze_tab.new_region_opened(self)
 
     def new_region_opened(self):

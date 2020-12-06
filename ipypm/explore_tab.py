@@ -54,7 +54,6 @@ def new_data_opened(self):
     self.region_dropdown.disabled = False
 
 def new_model_opened(self):
-    # this method no longer called... remove?
     # update the text widgets to show the current model
     self.model_name.value = self.model.name
     self.model_description.value = self.model.description
@@ -62,12 +61,13 @@ def new_model_opened(self):
     # update the list of transitions
     trans_list, trans_enabled = get_transitions_lists(self)
     self.transitions_chooser.options = trans_list
-    self.transitions_chooser.enabled = trans_enabled
-    
-    par_down = self.param_dropdown
-    if par_down.value in self.model.parameters:
-        reset_value = self.model.parameters[par_down.value].get_value()
-        self.val_text_widget.value = reset_value
+    self.transitions_chooser.value = trans_enabled
+
+    # update list of parameters
+    pars = get_par_list(self)
+    self.param_dropdown.options = pars
+    par = self.model.parameters[self.param_dropdown.value]
+    self.val_text_widget.value = par.get_value()
 
 def get_tab(self):
 
