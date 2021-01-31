@@ -24,3 +24,4 @@ History
 * 0.2.6 : increase max days to 500 (2020-10-4)
 * 0.2.7 : allow start date for plots to be specified (2020-11-21)
 * 0.2.8 : add trans date error and improve new model loading (2020-12-06)
+* 0.2.9 : allow dates to be skipped in fitting (2021-01-31)
