@@ -44,6 +44,7 @@ class ipypm:
         self.pop_data = None
         self.pop_dropdown = None
         self.date_range_text = None
+        self.skip_data_text = None
         self.full_par_dropdown = None
         self.full_pop_name = None
         self.optimizer = None

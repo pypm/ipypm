@@ -234,6 +234,9 @@ def get_tab(self):
     self.date_range_text = widgets.Text(value='', placeholder='range eg. 20:50',
                                         description='Fit days:', disabled=False,
                                         continuous_update=False)
+    self.skip_data_text = widgets.Text(value='', placeholder='dates to skip eg. 25,45:47',
+                                        description='Skip days:', disabled=False,
+                                        continuous_update=False)
 
     self.cumul_reset_checkbox = widgets.Checkbox(value=self.cumul_reset, description='start cumulative at 0', disabled=False)
     def cumul_reset_eventhandler(change):
@@ -372,8 +375,23 @@ def get_tab(self):
             range_list[1] = len(self.pop_data[self.full_pop_name]) - 1
         return range_list
 
+    def get_skip_dates():
+        skip_data = self.skip_data_text.value
+        skip_dates = []
+        if skip_data is not None and skip_data != '':
+            blocks = skip_data.split(',')
+            for block in blocks:
+                if ':' in block:
+                    limits = block.split(':')
+                    for i in range(int(limits[0]),int(limits[1])+1):
+                        skip_dates.append(i)
+                else:
+                    skip_dates.append(int(block))
+        return skip_dates
+
     def do_fit(b):
         range_list = get_range_list()
+        skip_dates = get_skip_dates()
         # check if NaNs exist or if days go outside range
         nan_list = []
         range_max = range_list[1]
@@ -386,7 +404,7 @@ def get_tab(self):
                 print('Data available up to day ',last_pop_day)
                 print('Remove the extra days from range')
         for day in range(range_list[0], range_max):
-            if np.isnan(self.pop_data[self.full_pop_name][day]):
+            if day not in skip_dates and np.isnan(self.pop_data[self.full_pop_name][day]):
                 nan_list.append(str(day))
         if len(nan_list) != 0:
             status = False
@@ -407,7 +425,7 @@ def get_tab(self):
                 output.clear_output(True)
                 # fit the parameters:
                 self.optimizer = Optimizer(self.model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list,
-                                           cumul_reset=self.cumul_reset)
+                                           cumul_reset=self.cumul_reset, skip_data=self.skip_data_text.value)
                 # The optimizer cannot scan over integer variable parameters
                 # Strip those out and do a scan over them to find the
                 # fit with the lowest chi^2:
@@ -623,7 +641,7 @@ def get_tab(self):
             new_date = last_transition['trans_date'] + delta_day
             model.transitions[last_transition['trans_name']].transition_time.set_value(new_date)
             optimizer = Optimizer(model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list,
-                                  cumul_reset=self.cumul_reset)
+                                  cumul_reset=self.cumul_reset, skip_data=self.skip_data_text.value)
             popt, pcov = optimizer.fit()
             mod_alpha = model.parameters[last_transition['alpha_name']].get_value()
             mod_alphas.append(mod_alpha)
@@ -674,14 +692,16 @@ def get_tab(self):
         range_list_reduced[1] -= n_day
 
         model = copy.deepcopy(self.model)
-        optimizer = Optimizer(model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list_reduced, cumul_reset=self.cumul_reset)
+        optimizer = Optimizer(model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list_reduced,
+                              cumul_reset=self.cumul_reset, skip_data=self.skip_data_text.value)
         popt, pcov = optimizer.fit()
         chi2_c_reduced = optimizer.fit_statistics['chi2_c']
         chi2_reduced = optimizer.fit_statistics['chi2']
         ndof_reduced = optimizer.fit_statistics['ndof']
 
         model = copy.deepcopy(self.model)
-        optimizer = Optimizer(model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list, cumul_reset=self.cumul_reset)
+        optimizer = Optimizer(model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list,
+                              cumul_reset=self.cumul_reset, skip_data=self.skip_data_text.value)
         popt, pcov = optimizer.fit()
         chi2_c_full = optimizer.fit_statistics['chi2_c']
         chi2_full = optimizer.fit_statistics['chi2']
@@ -715,7 +735,8 @@ def get_tab(self):
             rate_time.set_min(range_list[1]-2*n_day)
             rate_time.set_max(range_list[1]-n_day)
 
-            optimizer_mod = Optimizer(model_mod, self.full_pop_name, self.pop_data[self.full_pop_name], range_list, cumul_reset=self.cumul_reset)
+            optimizer_mod = Optimizer(model_mod, self.full_pop_name, self.pop_data[self.full_pop_name], range_list,
+                                      cumul_reset=self.cumul_reset, skip_data=self.skip_data_text.value)
             scan_dict = optimizer_mod.i_fit()
             with plot_output:
                 val_list = scan_dict['val_list']
@@ -769,7 +790,7 @@ def get_tab(self):
             injector_time.set_max(range_list[1] - n_day - 4)
 
             optimizer_mod = Optimizer(model_mod, self.full_pop_name, self.pop_data[self.full_pop_name],
-                                      range_list, cumul_reset=self.cumul_reset)
+                                      range_list, cumul_reset=self.cumul_reset, skip_data=self.skip_data_text.value)
             scan_dict = optimizer_mod.i_fit()
             with plot_output:
                 val_list = scan_dict['val_list']
@@ -823,6 +844,7 @@ def get_tab(self):
 
     left_box = widgets.VBox([self.pop_dropdown,
                              self.date_range_text,
+                             self.skip_data_text,
                              self.cumul_reset_checkbox,
                              self.full_par_dropdown,
                              variable_checkbox,
