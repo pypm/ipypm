@@ -1,4 +1,3 @@
-pypmca
 scipy
 numpy
 texttable
