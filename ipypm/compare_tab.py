@@ -56,7 +56,24 @@ def get_tab(self):
         diff.insert(0, diff[0])
         return diff
 
+    def delta_weekly(cumul):
+        diff = []
+        for i in range(7,len(cumul),7):
+            diff.append((cumul[i] - cumul[i-7])/7.)
+        return diff
+
+    def accum_weekly(daily):
+        accum = []
+        for i in range(7,len(daily),7):
+            sum = 0
+            for j in range(i-7,i):
+                sum += daily[j]
+            accum.append(sum/7.)
+        return accum
+
     def plot_total(self, model, sim_model, region, axis, y_axis_type='linear', y_max=0., scale=1.):
+
+        start_day = (day0_widget.value - date(2020, 3, 1)).days
 
         region_data = None
         if region != 'None' and region != 'Simulation':
@@ -75,13 +92,14 @@ def get_tab(self):
                             header = region_data[pop_name]['total']['header']
                             data = self.pd_dict[filename][header].values
                             td = range(len(data))
-                            axis.scatter(td, np.array(data)*scale, color=pop.color)
+                            axis.scatter(td[start_day:], data[start_day:], color=pop.color, zorder=1)
 
                 if region == 'Simulation':
-                    sim_pop = sim_model.populations[pop_name]
-                    if hasattr(sim_pop, 'show_sim') and sim_pop.show_sim:
-                        st = range(len(sim_pop.history))
-                        axis.scatter(st, np.array(sim_pop.history)*scale, color=sim_pop.color)
+                    if self.sim_model is not None:
+                        sim_pop = self.sim_model.populations[pop_name]
+                        if hasattr(sim_pop,'show_sim') and sim_pop.show_sim:
+                            st = range(len(sim_pop.history))
+                            axis.scatter(st[start_day:], sim_pop.history[start_day:], color=sim_pop.color, zorder=1)
 
         title = 'Totals'
         if region_data is not None:
@@ -103,6 +121,8 @@ def get_tab(self):
 
     def plot_daily(self, model, sim_model, region, axis, y_axis_type='linear', y_max=0., scale=1.):
 
+        start_day = (day0_widget.value - date(2020, 3, 1)).days
+
         region_data = None
         if region != 'None' and region != 'Simulation':
             region_data = self.data_description['regional_data'][region]
@@ -121,14 +141,31 @@ def get_tab(self):
                             header = region_data[pop_name]['daily']['header']
                             data = self.pd_dict[filename][header].values
                             td = range(len(data))
-                            axis.scatter(td, np.array(data)*scale, color=pop.color)
+                            axis.scatter(td[start_day:], data[start_day:], color=pop.color, s=10, zorder=1)
+                            weekly_data = accum_weekly(data[start_day:])
+                            tw = [start_day + 3.5 + i*7 for i in range(len(weekly_data))]
+                            axis.scatter(tw, weekly_data, color=pop.color, marker='*', s=100, zorder=1)
+                        else:
+                            filename = region_data[pop_name]['total']['filename']
+                            header = region_data[pop_name]['total']['header']
+                            data = self.pd_dict[filename][header].values
+                            daily_data = delta(data)
+                            td = range(len(daily_data))
+                            axis.scatter(td[start_day:], daily_data[start_day:], color=pop.color, s=10, zorder=1)
+                            weekly_data = delta_weekly(data[start_day:])
+                            tw = [start_day + 3.5 + i*7 for i in range(len(weekly_data))]
+                            axis.scatter(tw, weekly_data, color=pop.color, marker='*', s=100, zorder=1)
 
                 if region == 'Simulation':
-                    sim_pop = sim_model.populations[pop_name]
-                    if hasattr(sim_pop, 'show_sim') and sim_pop.show_sim:
-                        sim_daily = delta(sim_pop.history)
-                        st = range(len(sim_daily))
-                        axis.scatter(st, np.array(sim_daily)*scale, color=sim_pop.color)
+                    if self.sim_model is not None:
+                        sim_pop = self.sim_model.populations[pop_name]
+                        if hasattr(sim_pop,'show_sim') and sim_pop.show_sim:
+                            sim_daily = delta(sim_pop.history)
+                            st = range(len(sim_daily))
+                            axis.scatter(st[start_day:], sim_daily[start_day:], color=sim_pop.color, s=10, zorder=1)
+                            weekly_data = delta_weekly(sim_pop.history[start_day:])
+                            tw = [start_day + 3.5 + i * 7 for i in range(len(weekly_data))]
+                            axis.scatter(tw, weekly_data, color=pop.color, marker='*', s=100, zorder=1)
 
         title = 'Daily'
         if region_data is not None:
@@ -139,7 +176,7 @@ def get_tab(self):
         axis.legend()
         axis.set_yscale(y_axis_type)
         day_offset = (day0_widget.value - model.t0).days
-        axis.set_xlim(left=day_offset, right=day_offset + n_days_widget.value)
+        axis.set_xlim(left=day_offset, right=n_days_widget.value)
         if y_axis_type == 'log':
             axis.set_ylim(bottom=3)
         else:
@@ -154,7 +191,7 @@ def get_tab(self):
     n_days = n_days - n_days % 10 + 10
 
     n_days_widget = widgets.BoundedIntText(
-        value=n_days, min=10, max=300, step=1, description='n_days:',
+        value=n_days, min=10, max=600, step=1, description='n_days:',
         tooltip='number of days to model: sets the upper time range of plots')
 
     plot_type = widgets.Dropdown(
