@@ -401,7 +401,7 @@ def get_tab(self):
                         print('Remove: '+par.name)
                 elif par.mcmc_step is None:
                     status = False
-                    with ouput:
+                    with output:
                         print('MCMC step size missing for: '+par.name)
 
         if status:
