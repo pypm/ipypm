@@ -308,7 +308,7 @@ def get_delays_tab(self):
     delay_dropdown = widgets.Dropdown(description='Delay:', disabled=False)
     
     delay_name_widget = widgets.Text(description='Name:')
-    delay_type = widgets.Dropdown(description='Type:', options=['fast', 'norm', 'uniform', 'erlang'])
+    delay_type = widgets.Dropdown(description='Type:', options=['fast', 'norm', 'uniform', 'erlang', 'gamma'])
     
     delay_par1 = widgets.Dropdown(description='')
     delay_par2 = widgets.Dropdown(description='')
@@ -346,7 +346,7 @@ def get_delays_tab(self):
             delay = self.new_delays[delay_name]
         delay_name_widget.value = delay.name
         delay_type.value = delay.delay_type
-        if delay.delay_type == 'norm':
+        if delay.delay_type in ['norm','gamma']:
             delay_par1.description = 'mean:'
             delay_par2.description = 'sigma:'
             delay_par1.value = delay.delay_parameters['mean'].name
@@ -379,7 +379,7 @@ def get_delays_tab(self):
     delay_dropdown.observe(name_dropdown_eventhandler, names='value')
     
     def type_dropdown_eventhandler(change):
-        if delay_type.value == 'norm':
+        if delay_type.value in ['norm','gamma']:
             delay_par1.description = 'mean:'
             delay_par2.description = 'sigma:'
         elif delay_type.value == 'uniform':
@@ -409,7 +409,7 @@ def get_delays_tab(self):
     
     def get_delay_dict():
         delay_dict = None
-        if delay_type.value == 'norm':
+        if delay_type.value in ['norm','gamma']:
             delay_dict={'mean':get_par(delay_par1.value), 'sigma':get_par(delay_par2.value)}
         if delay_type.value == 'uniform':
             delay_dict={'mean':get_par(delay_par1.value), 'half_width':get_par(delay_par2.value)}
@@ -534,6 +534,8 @@ def get_populations_tab(self):
             par_name_list.sort()
             pop_initial_parameter.options = par_name_list
             pop_report_noise_parameter.options = par_name_list
+            pop_report_backlog_parameter.options = par_name_list
+            pop_report_days_parameter.options = par_name_list
 
             pop_name_list = list(self.edit_model.populations.keys()) + \
                 list(self.new_populations.keys())

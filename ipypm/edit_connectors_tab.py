@@ -696,7 +696,7 @@ def get_multiplier_tab(self):
         distribution, nbinom_par = mult.get_distribution()
         distribution_dropdown.value = distribution
         if distribution == 'nbinom':
-            nbinom_par_dropdown.value = nbinom_par
+            nbinom_par_dropdown.value = str(nbinom_par)
             nbinom_par_dropdown.disabled = False
         else:
             nbinom_par_dropdown.disabled = True
