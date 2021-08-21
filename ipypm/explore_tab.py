@@ -410,7 +410,7 @@ def get_tab(self):
                 x_props = dict(boxstyle='circle', facecolor='red', alpha=0.3)
                 # a hack to put it in the right place (since a 1 week delay - need to get 7 from somewhere)
                 delay = 7./self.model.get_time_step()
-                if tran.trigger_step+delay > start_day:
+                if tran.trigger_step+delay > start_day and tran.trigger_step+delay < self.n_days_widget.value:
                     axis.text(tran.trigger_step+delay, -0.1, x_text , transform=x_transform, fontsize=10,
                               verticalalignment='top', horizontalalignment='center', bbox=x_props)
             
