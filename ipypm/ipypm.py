@@ -59,7 +59,7 @@ class ipypm:
         self.model_filenames = None
         self.region_data_folders = None
         self.data_fit_statistics = None
-        self.cumul_reset = False
+        self.cumul_reset = True
         self.cumul_reset_checkbox = None
         self.mod_last_transition = None
         self.mod_alphas_std = None

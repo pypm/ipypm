@@ -238,7 +238,7 @@ def get_tab(self):
                                         description='Skip days:', disabled=False,
                                         continuous_update=False)
 
-    self.cumul_reset_checkbox = widgets.Checkbox(value=self.cumul_reset, description='start cumulative at 0', disabled=False)
+    self.cumul_reset_checkbox = widgets.Checkbox(value=self.cumul_reset, description='start cumulative at 0 (local)', disabled=False)
     def cumul_reset_eventhandler(change):
         self.cumul_reset = self.cumul_reset_checkbox.value
     self.cumul_reset_checkbox.observe(cumul_reset_eventhandler, names='value')
@@ -453,6 +453,10 @@ def get_tab(self):
                     check_trans_button.disabled = False
                     mod_trans_button.disabled = False
                     with output:
+                        if self.cumul_reset:
+                            print('Local fit. Iterations start at step:',self.optimizer.start_step)
+                            print(' ')
+
                         print('Fit results:')
                         for par_name in self.optimizer.variable_names:
                             print('  '+par_name,'= {0:0.3f}'.format(self.model.parameters[par_name].get_value()))
