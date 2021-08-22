@@ -129,7 +129,9 @@ def get_tab(self):
         model_data = pop.history
         t = range(len(model_data))
         if self.cumul_reset:
-            cumul_offset = pop.history[range_list[0]]
+            cumul_offset = 0
+            if pop.monotonic:
+                cumul_offset = pop.history[range_list[0]]
             model_data = [pop.history[i] - cumul_offset for i in range(range_list[0],range_list[1])]
             t = range(range_list[0], range_list[1])
 
@@ -138,7 +140,9 @@ def get_tab(self):
         td = range(range_list[0], range_list[1])
         data = []
         if self.cumul_reset:
-            cumul_offset = self.pop_data[self.full_pop_name][range_list[0]]
+            cumul_offset = 0
+            if pop.monotonic:
+                cumul_offset = self.pop_data[self.full_pop_name][range_list[0]]
             for i in td:
                 data.append(self.pop_data[self.full_pop_name][i] - cumul_offset)
         else:
