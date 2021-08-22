@@ -295,7 +295,7 @@ def get_tab(self):
             seed = self.get_seed_value(new_seed = True)
             np.random.seed(seed)
             self.sim_model.reset()
-            self.sim_model.generate_data(self.n_days_widget.value)
+            self.sim_model.generate_data(self.n_days_widget.value, data_start = data_start_widget.value)
             # since there could be new simulation data:
             self.new_region_opened()
         
@@ -501,8 +501,10 @@ def get_tab(self):
             self.data_description['selected_region'] = region_selected
         if region_selected == 'Simulation':
             self.seed_text_widget.disabled = False
+            data_start_widget.disabled = False
         else:
             self.seed_text_widget.disabled = True
+            data_start_widget.disabled = True
         with output:
             print('Changed data region to: '+region_selected)
         self.new_region_opened()
@@ -512,6 +514,11 @@ def get_tab(self):
     self.seed_text_widget = widgets.IntText(value=0, description='Seed:',
                                             disabled=True,
                                             tooltip='To use a fixed seed for simulation, enter an integer',
+                                            continuous_update=False)
+
+    data_start_widget = widgets.IntText(value=0, description='Data start:',
+                                            disabled=True,
+                                            tooltip='Enter step for simulation to start',
                                             continuous_update=False)
 
     def save_model_file(b):
@@ -617,7 +624,7 @@ def get_tab(self):
     left_box = widgets.VBox([t0_widget, self.n_days_widget, plot_1, plot_2, y_max_1, y_max_2])
     right_box = widgets.VBox([widgets.HBox([plot_button, reset_button]), 
                               self.param_dropdown, self.val_text_widget, self.transitions_chooser, 
-                              self.region_dropdown, self.seed_text_widget])
+                              self.region_dropdown, self.seed_text_widget, data_start_widget])
     
     return AppLayout(header=header_hbox,
               left_sidebar=left_box,
