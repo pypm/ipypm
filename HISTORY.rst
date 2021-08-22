@@ -27,3 +27,4 @@ History
 * 0.2.9 : allow dates to be skipped in fitting (2021-01-31)
 * 0.2.10 : fixes to compare and MCMC tabs
 * 0.2.11 : increase maximum # of days to show (2021-03-10)
+* 0.2.12 : fixes for edit and explore tabs, local fit default (2021-08-22)
