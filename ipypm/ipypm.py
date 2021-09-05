@@ -61,6 +61,8 @@ class ipypm:
         self.data_fit_statistics = None
         self.cumul_reset = True
         self.cumul_reset_checkbox = None
+        self.skip_zeros = True
+        self.skip_zeros_checkbox = None
         self.mod_last_transition = None
         self.mod_alphas_std = None
 
