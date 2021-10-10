@@ -176,7 +176,7 @@ def get_tab(self):
 
         daily = delta(pop.history)
         t = range(len(daily))
-        axis.step(t, daily, lw=2, label=pop_name, color=pop.color)
+        axis.step(t[range_list[0]:range_list[1]], daily[range_list[0]:range_list[1]], lw=2, label=pop_name, color=pop.color)
 
         td = range(range_list[0], range_list[1])
         data = []
