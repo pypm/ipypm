@@ -94,7 +94,7 @@ def get_tab(self):
             accum.append(sum/7.)
         return accum
 
-    def plot_total(self, axis, y_axis_type='linear', y_max=0.):
+    def plot_total(self, axis, y_axis_type='linear', y_max=0., y_min=0.):
 
         start_day = (t0_widget.value - date(2020,3,1)).days
 
@@ -135,9 +135,9 @@ def get_tab(self):
         axis.set_yscale(y_axis_type)
         axis.set_xlim(left=start_day, right=self.n_days_widget.value)
         if y_axis_type == 'log':
-            axis.set_ylim(bottom=3)
+            axis.set_ylim(bottom=max(3, y_min))
         else:
-            axis.set_ylim(bottom=0)
+            axis.set_ylim(bottom=y_min)
         if (y_max > 0.):
             axis.set_ylim(top=y_max)
 
@@ -186,7 +186,7 @@ def get_tab(self):
             axis.set_ylim(top=y_max)
             axis.set_ylim(bottom=-y_max)
             
-    def plot_daily(self, axis, y_axis_type='linear', y_max=0.):
+    def plot_daily(self, axis, y_axis_type='linear', y_max=0., y_min=0.):
 
         start_day = (t0_widget.value - date(2020, 3, 1)).days
         
@@ -245,9 +245,9 @@ def get_tab(self):
         axis.set_yscale(y_axis_type)
         axis.set_xlim(left=start_day, right=self.n_days_widget.value)
         if y_axis_type == 'log':
-            axis.set_ylim(bottom=3)
+            axis.set_ylim(bottom=max(y_min,3))
         else:
-            axis.set_ylim(bottom=0)
+            axis.set_ylim(bottom=y_min)
         if (y_max > 0.):
             axis.set_ylim(top=y_max)
 
@@ -272,9 +272,17 @@ def get_tab(self):
         value=0., min=0., max=1.E8, step=100., description='y_max #1:',
         tooltip='maximum of vertical axis for Plot #1. (0 -> autoscale)', disabled=False)
     
+    y_min_1 = widgets.BoundedFloatText(
+        value=0., min=0., max=1.E8, step=100., description='y_min #1:',
+        tooltip='minimum of vertical axis for Plot #1. (0 -> autoscale)', disabled=False)
+    
     y_max_2 = widgets.BoundedFloatText(
         value=0., min=0., max=1.E8, step=100., description='y_max #2:',
         tooltip='maximum of vertical axis for Plot #2. (0 -> autoscale)', disabled=False)
+    
+    y_min_2 = widgets.BoundedFloatText(
+        value=0., min=0., max=1.E8, step=100., description='y_min #2:',
+        tooltip='minimum of vertical axis for Plot #2. (0 -> autoscale)', disabled=False)
     
     output = widgets.Output()
     plot_output = widgets.Output()
@@ -329,13 +337,14 @@ def get_tab(self):
             if 'linear' not in plot_1.value:
                 y_axis_type = 'log'
             y_max = y_max_1.value
+            y_min = y_min_1.value
             if 'total' in plot_1.value:
                 if 'residual' in plot_1.value:
                     plot_residual(self, axis, y_max)
                 else:
-                    plot_total(self, axis, y_axis_type, y_max)
+                    plot_total(self, axis, y_axis_type, y_max, y_min)
             else:
-                plot_daily(self, axis, y_axis_type, y_max)
+                plot_daily(self, axis, y_axis_type, y_max, y_min)
             plot_improvements(axis)
 
     
@@ -344,13 +353,14 @@ def get_tab(self):
             if 'linear' not in plot_2.value:
                 y_axis_type = 'log'
             y_max = y_max_2.value
+            y_min = y_min_2.value
             if 'total' in plot_2.value:
                 if 'residual' in plot_2.value:
                     plot_residual(self, axis, y_max)
                 else:
-                    plot_total(self, axis, y_axis_type, y_max)
+                    plot_total(self, axis, y_axis_type, y_max, y_min)
             else:
-                plot_daily(self, axis, y_axis_type, y_max)
+                plot_daily(self, axis, y_axis_type, y_max, y_min)
             plot_improvements(axis)
     
             self.last_plot = plt.gcf()
@@ -401,7 +411,7 @@ def get_tab(self):
                 y_min = tran_dict[tran_name[0:prefix]]['y_min']
                 y_max = tran_dict[tran_name[0:prefix]]['y_max']
                 axis.axvspan(last_mod, tran.trigger_step, facecolor='papayawhip', 
-                             edgecolor='tan', alpha=0.1*(n_mod+1), zorder=0, ymin=y_min, ymax=y_max)
+                             edgecolor='tan', alpha=0.5, zorder=-n_mod, ymin=y_min, ymax=y_max)
                 tran_dict[tran_name[0:prefix]]['last_mod'] = tran.trigger_step
             else:
                 # an injector adds population - use an circle to show times (delayed by a week?)
@@ -621,7 +631,7 @@ def get_tab(self):
     model_save_button.on_click(save_model_file)
     plot_save_button.on_click(save_plot_file)
         
-    left_box = widgets.VBox([t0_widget, self.n_days_widget, plot_1, plot_2, y_max_1, y_max_2])
+    left_box = widgets.VBox([t0_widget, self.n_days_widget, plot_1, plot_2, y_max_1, y_min_1, y_max_2, y_min_2])
     right_box = widgets.VBox([widgets.HBox([plot_button, reset_button]), 
                               self.param_dropdown, self.val_text_widget, self.transitions_chooser, 
                               self.region_dropdown, self.seed_text_widget, data_start_widget])
