@@ -401,7 +401,7 @@ def get_tab(self):
                 y_min = tran_dict[tran_name[0:prefix]]['y_min']
                 y_max = tran_dict[tran_name[0:prefix]]['y_max']
                 axis.axvspan(last_mod, tran.trigger_step, facecolor='papayawhip', 
-                             edgecolor='tan', alpha=0.1*(n_mod+1), zorder=0, ymin=y_min, ymax=y_max)
+                             edgecolor='tan', alpha=0.5, zorder=-n_mod, ymin=y_min, ymax=y_max)
                 tran_dict[tran_name[0:prefix]]['last_mod'] = tran.trigger_step
             else:
                 # an injector adds population - use an circle to show times (delayed by a week?)
