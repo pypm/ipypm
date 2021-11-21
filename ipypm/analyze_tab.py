@@ -214,13 +214,17 @@ def get_tab(self):
             else:
                 plot_daily(self, axis, y_axis_type, range_list)
 
+            # show last 3 weeks at most (linear)
             axis = axes[1]
-            y_axis_type = 'log'
+            y_axis_type = 'linear'
+            reduced_range_list = [range_list[0],range_list[1]]
+            if range_list[1]-range_list[0] > 21:
+                reduced_range_list[0] = range_list[1]-21
 
             if self.pop_dropdown.value[:5] == 'total':
-                plot_total(self, axis, y_axis_type, range_list)
+                plot_total(self, axis, y_axis_type, reduced_range_list)
             else:
-                plot_daily(self, axis, y_axis_type, range_list)
+                plot_daily(self, axis, y_axis_type, reduced_range_list)
 
             self.last_plot = plt.gcf()
             plt.show()
