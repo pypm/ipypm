@@ -30,3 +30,4 @@ History
 * 0.2.12 : fixes for edit and explore tabs, local fit default (2021-08-22)
 * 0.2.13 : add option to skip zeros in cumulative fit (2021-09-05)
 * 0.2.14 : fixes and improvements to plotting (2021-11-21)
+* 0.2.15 : minor changes (2021-12-12)
