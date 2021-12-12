@@ -116,7 +116,7 @@ def get_tab(self):
     output = widgets.Output()
     plot_output = widgets.Output()
 
-    def plot_total(self, axis, y_axis_type, range_list):
+    def plot_total(self, axis, y_axis_type, range_list, offset_day):
 
         region = self.region_dropdown.value
         region_data = None
@@ -131,7 +131,8 @@ def get_tab(self):
         if self.cumul_reset:
             cumul_offset = 0
             if pop.monotonic:
-                cumul_offset = pop.history[range_list[0]]
+                cumul_offset = pop.history[range_list[0]] - self.pop_data[self.full_pop_name][range_list[0]]
+                cumul_offset += pop.history[offset_day]
             model_data = [pop.history[i] - cumul_offset for i in range(range_list[0],range_list[1])]
             t = range(range_list[0], range_list[1])
 
@@ -142,7 +143,7 @@ def get_tab(self):
         if self.cumul_reset:
             cumul_offset = 0
             if pop.monotonic:
-                cumul_offset = self.pop_data[self.full_pop_name][range_list[0]]
+                cumul_offset = pop.history[offset_day]
             for i in td:
                 data.append(self.pop_data[self.full_pop_name][i] - cumul_offset)
         else:
@@ -161,8 +162,6 @@ def get_tab(self):
         # axis.set_xlim(left=-1, right=n_days_widget.value)
         if y_axis_type == 'log':
             axis.set_ylim(bottom=3)
-        else:
-            axis.set_ylim(bottom=0)
 
     def plot_daily(self, axis, y_axis_type, range_list):
 
@@ -210,7 +209,7 @@ def get_tab(self):
             y_axis_type = 'linear'
 
             if self.pop_dropdown.value[:5] == 'total':
-                plot_total(self, axis, y_axis_type, range_list)
+                plot_total(self, axis, y_axis_type, range_list, range_list[0])
             else:
                 plot_daily(self, axis, y_axis_type, range_list)
 
@@ -222,7 +221,7 @@ def get_tab(self):
                 reduced_range_list[0] = range_list[1]-21
 
             if self.pop_dropdown.value[:5] == 'total':
-                plot_total(self, axis, y_axis_type, reduced_range_list)
+                plot_total(self, axis, y_axis_type, reduced_range_list, range_list[0])
             else:
                 plot_daily(self, axis, y_axis_type, reduced_range_list)
 
