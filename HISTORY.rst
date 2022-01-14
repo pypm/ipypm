@@ -31,3 +31,4 @@ History
 * 0.2.13 : add option to skip zeros in cumulative fit (2021-09-05)
 * 0.2.14 : fixes and improvements to plotting (2021-11-21)
 * 0.2.15 : minor changes (2021-12-12)
+* 0.2.16 : add option to define start day for iterations (2022-01-14)
