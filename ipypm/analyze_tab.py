@@ -245,6 +245,10 @@ def get_tab(self):
                                         description='Skip days:', disabled=False,
                                         continuous_update=False)
 
+    self.local_start_inttext = widgets.IntText(value=None, placeholder='earlier iteration start',
+                                               description='Local start:', disabled=False,
+                                               continuous_update=False)
+
     self.cumul_reset_checkbox = widgets.Checkbox(value=self.cumul_reset, description='start cumulative at 0 (local)', disabled=False)
     def cumul_reset_eventhandler(change):
         self.cumul_reset = self.cumul_reset_checkbox.value
@@ -438,7 +442,7 @@ def get_tab(self):
                 # fit the parameters:
                 self.optimizer = Optimizer(self.model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list,
                                            cumul_reset=self.cumul_reset, skip_data=self.skip_data_text.value,
-                                           skip_zeros=self.skip_zeros)
+                                           skip_zeros=self.skip_zeros, local_start=self.local_start_inttext.value)
                 # The optimizer cannot scan over integer variable parameters
                 # Strip those out and do a scan over them to find the
                 # fit with the lowest chi^2:
@@ -659,7 +663,7 @@ def get_tab(self):
             model.transitions[last_transition['trans_name']].transition_time.set_value(new_date)
             optimizer = Optimizer(model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list,
                                   cumul_reset=self.cumul_reset, skip_data=self.skip_data_text.value,
-                                  skip_zeros=self.skip_zeros)
+                                  skip_zeros=self.skip_zeros, local_start=self.local_start_inttext.value)
             popt, pcov = optimizer.fit()
             mod_alpha = model.parameters[last_transition['alpha_name']].get_value()
             mod_alphas.append(mod_alpha)
@@ -712,7 +716,7 @@ def get_tab(self):
         model = copy.deepcopy(self.model)
         optimizer = Optimizer(model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list_reduced,
                               cumul_reset=self.cumul_reset, skip_data=self.skip_data_text.value,
-                              skip_zeros=self.skip_zeros)
+                              skip_zeros=self.skip_zeros, local_start=self.local_start_inttext.value)
         popt, pcov = optimizer.fit()
         chi2_c_reduced = optimizer.fit_statistics['chi2_c']
         chi2_reduced = optimizer.fit_statistics['chi2']
@@ -721,7 +725,7 @@ def get_tab(self):
         model = copy.deepcopy(self.model)
         optimizer = Optimizer(model, self.full_pop_name, self.pop_data[self.full_pop_name], range_list,
                               cumul_reset=self.cumul_reset, skip_data=self.skip_data_text.value,
-                              skip_zeros=self.skip_zeros)
+                              skip_zeros=self.skip_zeros, local_start=self.local_start_inttext.value)
         popt, pcov = optimizer.fit()
         chi2_c_full = optimizer.fit_statistics['chi2_c']
         chi2_full = optimizer.fit_statistics['chi2']
@@ -757,7 +761,7 @@ def get_tab(self):
 
             optimizer_mod = Optimizer(model_mod, self.full_pop_name, self.pop_data[self.full_pop_name], range_list,
                                       cumul_reset=self.cumul_reset, skip_data=self.skip_data_text.value,
-                                      skip_zeros=self.skip_zeros)
+                                      skip_zeros=self.skip_zeros, local_start=self.local_start_inttext.value)
             scan_dict = optimizer_mod.i_fit()
             with plot_output:
                 val_list = scan_dict['val_list']
@@ -812,7 +816,7 @@ def get_tab(self):
 
             optimizer_mod = Optimizer(model_mod, self.full_pop_name, self.pop_data[self.full_pop_name],
                                       range_list, cumul_reset=self.cumul_reset, skip_data=self.skip_data_text.value,
-                                      skip_zeros=self.skip_zeros)
+                                      skip_zeros=self.skip_zeros, local_start=self.local_start_inttext.value)
             scan_dict = optimizer_mod.i_fit()
             with plot_output:
                 val_list = scan_dict['val_list']
@@ -867,6 +871,7 @@ def get_tab(self):
     left_box = widgets.VBox([self.pop_dropdown,
                              self.date_range_text,
                              self.skip_data_text,
+                             self.local_start_inttext,
                              self.cumul_reset_checkbox,
                              self.skip_zeros_checkbox,
                              self.full_par_dropdown,

@@ -191,7 +191,7 @@ def get_tab(self):
     n_days = n_days - n_days % 10 + 10
 
     n_days_widget = widgets.BoundedIntText(
-        value=n_days, min=10, max=600, step=1, description='n_days:',
+        value=n_days, min=10, max=999, step=1, description='n_days:',
         tooltip='number of days to model: sets the upper time range of plots')
 
     plot_type = widgets.Dropdown(
